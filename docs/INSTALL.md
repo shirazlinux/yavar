@@ -20,7 +20,7 @@ php -m | grep -E 'pdo_sqlite|curl|mbstring|gd|openssl'
 ## ۱. دریافت کد
 
 ```bash
-git clone https://codeberg.org/YOUR_USER/yavar.git
+git clone https://codeberg.org/shirazlinux/yavar.git
 cd yavar
 ```
 

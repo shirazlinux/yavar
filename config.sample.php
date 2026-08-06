@@ -12,7 +12,7 @@ return [
     'community_url'  => 'https://example.org',
 
     // اختیاری: آدرس مخزن کد (اگر بخواهید جایی در UI لینک بدهید)
-    'source_code_url' => '',
+    'source_code_url' => 'https://codeberg.org/shirazlinux/yavar',
 
     // تماس (برای نمایش / الزامات درگاه)
     'contact_email'    => 'info@example.org',

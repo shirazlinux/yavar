@@ -19,7 +19,7 @@
 پیش‌نیاز: PHP 8.0+ با `pdo_sqlite`, `curl`, `mbstring`, `json`, `fileinfo`, `gd`, `openssl` و وب‌سرور با `mod_rewrite`.
 
 ```bash
-git clone https://codeberg.org/YOUR_USER/yavar.git
+git clone https://codeberg.org/shirazlinux/yavar.git
 cd yavar
 cp config.sample.php config.php
 # config.php را ویرایش کنید
