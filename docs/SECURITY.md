@@ -1,66 +1,94 @@
-# امنیت یاور
+# امنیت — چه کار شده و شما چه چک کنید
 
-این سند برای **نصب‌کننده‌ها و مشارکت‌کننده‌ها** است. مخزن عمومی عمداً **بدون secret و بدون دیتابیس** است.
+## هدف این مخزن عمومی
+
+کد **قابل نصب و قابل بررسی** است، ولی **داده و secret محیط واقعی داخلش نیست.**
 
 ---
 
-## آنچه در این کد تعبیه شده
+## چه چیزهایی از export حذف شده (انجام‌شده)
 
-| لایه | جزئیات |
+| مورد | وضعیت |
 |------|--------|
-| CSRF | همهٔ POSTهای حساس + API با `hash_equals` |
-| نشست | `HttpOnly`, `Secure`, `SameSite=Lax`, strict mode, regenerate on login |
-| Rate limit | ورود، فراموشی رمز، شروع پرداخت، OTP (IP + شماره)، ثبت‌نام، اعلام واریز |
-| پرداخت | `markPaid` فقط `pending→paid`؛ `payment_ref` یکتا؛ انقضای pending |
-| کارت‌به‌کارت | ادعای فعال ≠ تسویه نهایی؛ ادمین `ready` می‌کند |
-| OTP | HMAC در نشست (نه plaintext)؛ سقف تلاش |
-| آپلود | MIME + re-encode GD + PHP engine off در uploads |
-| XSS | `e()` در PHP؛ escape در JS برای فیلدهای بانک |
-| Redirect | `safe_internal_path` بعد از login؛ whitelist درگاه در JS |
-| هدرها | HSTS, CSP, X-Frame-Options, nosniff, … |
-| مسیرها | `/data`, `/lib`, `config.php` از وب مسدود |
+| `config.php` با توکن/رمز/SMTP واقعی | حذف — فقط `config.sample.php` با placeholder |
+| `*.sqlite` | حذف |
+| `data/*.json`, `settings.json`, pending | حذف |
+| `*.log`, `*.log.gz` | حذف |
+| آپلودهای کاربران در `assets/uploads/` | حذف (فقط `.htaccess` + `.gitkeep`) |
+| بکاپ‌های `.live` و endpoint تست | حذف |
+| `.gitignore` برای جلوگیری از commit دوبارهٔ secret | هست |
+
+اسکن روی درخت عمومی قبل از commit اولیه انجام شد (hash رمز، کلید کاوه‌نگار، client secret پی‌پینگ، و مشابه).
 
 ---
 
-## آنچه نباید عمومی شود
+## دفاع‌های داخل خودِ کد (روی نمونهٔ زنده هم فعال است)
 
-هرگز در گیت یا Issue عمومی نگذارید:
+| موضوع | رفتار |
+|------|--------|
+| CSRF | فرم‌ها و APIهای state-changing |
+| Rate limit | login، OTP، start پرداخت، forgot password، register، report-transfer |
+| نشست | Secure + HttpOnly + SameSite + regenerate روی login |
+| پرداخت | markPaid فقط pending→paid؛ payment_ref تکراری رد می‌شود |
+| OTP | hash در نشست؛ سقف تلاش؛ محدودیت IP و شماره |
+| آپلود | MIME + re-encode تصویر؛ PHP در uploads خاموش |
+| مسیرها | `/data`، `/lib`، `config.php` از وب 403 |
+| هدرها | HSTS، CSP، X-Frame، nosniff، … |
 
-- `config.php`
-- `data/*.sqlite` و بکاپ‌ها
-- `data/settings.json` / توکن‌ها
-- `data/donations.log` / `callback.log`
-- `assets/uploads/*` کاربران
-- خروجی واقعی `password_hash` ادمین production
-- کلید SMTP، کاوه‌نگار، پی‌پینگ
-
-`.gitignore` این‌ها را پوشش می‌دهد؛ قبل از `git push` با `git status` چک کنید.
-
----
-
-## سخت‌سازی پیشنهادی production
-
-1. **HTTPS اجباری** + تمدید خودکار گواهی  
-2. `chmod 600 config.php`  
-3. بکاپ رمزنگاری‌شدهٔ SQLite  
-4. رمز قوی ادمین + در آینده 2FA  
-5. محدود کردن پنل ادمین با IP (اختیاری، سطح هاست/فایروال)  
-6. مانیتور `/admin/security.php`  
-7. به‌روزرسانی PHP و بررسی دوره‌ای وابستگی‌ها  
+جزئیات فنی بیشتر در تاریخچهٔ توسعهٔ نمونهٔ شیرازلینوکس؛ برای نصب‌کننده همین جدول کافی است.
 
 ---
 
-## گزارش آسیب‌پذیری
+## شما **باید** این‌ها را خودتان چک کنید (۵ دقیقه)
 
-اگر باگ امنیتی در کد عمومی یافتید:
+روی **همین پوشهٔ گیت** قبل از push:
 
-1. **عمومی نکنید** (حداقل تا رفع).  
-2. به نگه‌دارندگان پروژه (شیرازلینوکس / Issue خصوصی Codeberg) اطلاع دهید.  
-3. PoC حداقلی و بدون دادهٔ واقعی کاربران کافی است.
+```bash
+cd ~/Documents/github/yavar   # یا codeberg/yavar
+
+# 1) config واقعی نباشد
+test ! -f config.php && echo OK || echo "BAD: config.php exists"
+
+# 2) دیتابیس/لاگ در فایل‌های track‌شده نباشد
+git ls-files | grep -E '\.sqlite$|\.log$|config\.php$' && echo BAD || echo OK
+
+# 3) چیزی شبیه کلید واقعی نباشد (نمونه‌ها با CHANGE_ME / خالی OK هستند)
+grep -RInE 'smtp_pass|payping_token|kavenegar|password_hash' --include='*.php' . \
+  | grep -v config.sample.php | grep -v '.git' || true
+# خروجی باید خالی یا فقط کد برنامه باشد، نه مقدار secret
+```
+
+روی **سایت زنده‌ای که خودتان نصب می‌کنید** بعد از deploy:
+
+```bash
+# از بیرون (curl یا مرورگر) باید 403 باشند:
+#   /config.php
+#   /data/
+#   /lib/auth.php
+#   /data/app.sqlite
+```
+
+و یک‌بار:
+
+- لاگین با رمز اشتباه چند بار → rate limit
+- `POST /api/start.php` بدون CSRF → 403
 
 ---
 
-## AGPL و امنیت
+## چه چیزی «امنیت ۱۰۰٪» نیست
 
-AGPL اجازهٔ بررسی عمومی کد را می‌دهد — این **شفافیت** است، نه ضعف.  
-امنیت با «مخفی کردن کد» به‌دست نمی‌آید؛ با طراحی درست، secret جدا، و به‌روزرسانی به‌دست می‌آید.
+- هیچ نرم‌افزاری بدون باگ تضمین نمی‌شود.
+- secretها اگر روی سرور لو بروند (دسترسی SSH/هاست) جدا از این مخزن است.
+- بعد از نصب، **بکاپ SQLite** و **رمز ادمین قوی** و **HTTPS** با شماست.
+
+اگر باگ امنیتی در کد عمومی پیدا کردید: Issue عمومی با PoC مخرب نزنید؛ خصوصی اطلاع دهید.
+
+---
+
+## خلاصه
+
+| سوال | جواب |
+|------|------|
+| secret و DB در این گیت هست؟ | **نه** (طبق export و اسکن) |
+| باید خودم چک کنم؟ | **بله، همان ۳–۴ دستور بالا** قبل از push — ۲ دقیقه |
+| برای production چه کار کنم؟ | `chmod 600 config.php`، HTTPS، بکاپ `data/`، مانیتور `/admin/security.php` |

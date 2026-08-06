@@ -86,3 +86,5 @@ yavar/
 - **اجباری برای runtime:** فقط PHP + SQLite  
 
 بدون Composer در نسخهٔ فعلی.
+
+راه‌اندازی: [INSTALL.md](INSTALL.md) · امنیت: [SECURITY.md](SECURITY.md)

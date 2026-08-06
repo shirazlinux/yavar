@@ -1,17 +1,14 @@
-# راه‌اندازی کامل یاور
+# راه‌اندازی یاور
 
-## ۱. پیش‌نیاز سرور
+## پیش‌نیاز
 
-| مورد | حداقل |
+| مورد | مقدار |
 |------|--------|
-| PHP | 8.0 (پیشنهاد 8.1+) |
+| PHP | 8.0 یا بالاتر |
 | افزونه‌ها | `pdo_sqlite`, `curl`, `mbstring`, `json`, `fileinfo`, `gd`, `openssl` |
-| وب‌سرور | Apache 2.4 / LiteSpeed با `AllowOverride All` |
-| ماژول‌ها | `mod_rewrite`, `mod_headers` (توصیه) |
-| SSL | HTTPS (Let's Encrypt یا گواهی هاست) |
-| ایمیل | SMTP (اگر `mail()` روی هاست خاموش است) |
-
-بررسی سریع:
+| وب‌سرور | Apache / LiteSpeed با `AllowOverride All` |
+| ماژول‌ها | `mod_rewrite` (لازم)، `mod_headers` (توصیه) |
+| HTTPS | برای کوکی امن نشست لازم است |
 
 ```bash
 php -v
@@ -20,126 +17,117 @@ php -m | grep -E 'pdo_sqlite|curl|mbstring|gd|openssl'
 
 ---
 
-## ۲. دریافت کد
+## ۱. دریافت کد
 
 ```bash
 git clone https://codeberg.org/YOUR_USER/yavar.git
 cd yavar
 ```
 
-یا ZIP را از Codeberg دانلود و در `public_html/yavar` (یا دامنهٔ جدا) باز کنید.
+یا ZIP را از Codeberg بگیرید و در مسیر وب (مثلاً `public_html/`) باز کنید.
 
 ---
 
-## ۳. تنظیمات
+## ۲. تنظیمات
 
 ```bash
 cp config.sample.php config.php
-chmod 600 config.php   # فقط مالک بخواند
+chmod 600 config.php
 ```
 
-فیلدهای مهم `config.php`:
+حداقل این‌ها را در `config.php` پر کنید:
 
-| کلید | توضیح |
-|------|--------|
-| `site_url` | آدرس کامل با `https://` بدون اسلش انتهایی |
-| `source_code_url` | لینک مخزن عمومی (فوتر) |
-| `admin_email` | ایمیل ورود اولین ادمین |
-| `admin_password_hash` | خروجی `password_hash` |
-| `admin_notify_email` | اعلان‌های سیستمی |
-| `db_path` | مسیر SQLite (پیش‌فرض `data/app.sqlite`) |
-| `gateway` | `bank` / `payping` / `auto` / … |
-| `payping_token` | توکن Bearer از پنل پی‌پینگ |
-| `kavenegar_api_key` | برای OTP (اختیاری ولی برای ثبت‌نام فعال لازم) |
-| `smtp_*` | ارسال ایمیل |
+| کلید | کار |
+|------|-----|
+| `site_url` | آدرس کامل سایت با `https://` (بدون `/` آخر) |
+| `admin_email` | ایمیل ادمین اولیه |
+| `admin_password_hash` | خروجی دستور زیر |
+| `admin_notify_email` | ایمیل اعلان‌های سیستمی |
+| `db_path` | پیش‌فرض: `__DIR__ . '/data/app.sqlite'` |
+| `gateway` | `bank` یا `payping` یا `auto` یا … |
+| `smtp_*` | اگر `mail()` روی هاست کار نمی‌کند |
+| `payping_token` | فقط اگر درگاه پی‌پینگ می‌خواهید |
+| `kavenegar_api_key` | فقط اگر OTP پیامکی می‌خواهید |
 
-ساخت hash رمز:
+ساخت hash رمز ادمین:
 
 ```bash
-php -r "echo password_hash('رمز-قوی-اینجا', PASSWORD_DEFAULT), PHP_EOL;"
+php -r "echo password_hash('رمز-قوی', PASSWORD_DEFAULT), PHP_EOL;"
 ```
+
+`config.php` را **هرگز** در گیت commit نکنید (در `.gitignore` هست).
 
 ---
 
-## ۴. مجوز پوشه‌ها
+## ۳. پوشه‌های نوشتنی
 
 ```bash
 mkdir -p data assets/uploads
 chmod 750 data assets/uploads
-# اگر وب‌سرور با کاربر دیگری اجرا می‌شود، مالکیت را درست کنید
-# chown -R USER:USER .
 ```
 
-فایل‌های `.htaccess` داخل `data/` و `assets/uploads/` را نگه دارید.
+فایل‌های `.htaccess` داخل `data/` و `assets/uploads/` را نگه دارید (دسترسی وب را می‌بندند).
 
 ---
 
-## ۵. دامنه و Document Root
+## ۴. دامنه و Document Root
 
-### الف) دامنهٔ اختصاصی (پیشنهاد)
+ریشهٔ وب باید جایی باشد که `index.php` و `.htaccess` هستند.
 
-مثلاً `donate.example.org` → Document Root = ریشهٔ پروژه (`index.php` همین‌جا).
-
-### ب) زیرپوشه
-
-اگر روی `example.org/yavar/` نصب می‌کنید، در `.htaccess` مقدار `RewriteBase` را به `/yavar/` تغییر دهید و `site_url` را مطابق تنظیم کنید.
+اگر زیرمسیر نصب می‌کنید (مثلاً `/yavar/`)، در `.htaccess` مقدار `RewriteBase` را به `/yavar/` تغییر دهید و `site_url` را مطابق همان بگذارید.
 
 ---
 
-## ۶. اولین اجرا
+## ۵. اولین اجرا
 
-1. `https://your-domain/` را باز کنید.  
-2. جداول SQLite خودکار ساخته می‌شوند.  
-3. با `admin_email` / رمزی که hash کردید وارد شوید.  
-4. اگر ادمین ساخته نشد: hash خالی بوده یا ایمیل تکراری است — لاگ PHP را ببینید.
+1. سایت را با HTTPS باز کنید.
+2. جداول SQLite خودکار ساخته می‌شوند.
+3. با `admin_email` و رمزی که hash کردید وارد شوید: `/login.php`
+4. پنل مدیریت: `/admin/`
 
-مسیرهای مهم:
+مسیرهای مهم بعد از نصب:
 
-| مسیر | نقش |
-|------|-----|
-| `/` | فهرست فعالان |
-| `/register.php` | ثبت‌نام با صفحه حمایت |
-| `/register-supporter.php` | فقط حامی |
-| `/login.php` | ورود |
+| مسیر | کاربرد |
+|------|--------|
+| `/` | فهرست |
+| `/register.php` | ثبت‌نام فعال |
+| `/register-supporter.php` | ثبت‌نام حامی |
+| `/dashboard/` | پنل کاربر |
 | `/admin/` | مدیریت |
-| `/admin/settlements.php` | تسویه و ادعاها |
+| `/admin/settlements.php` | تسویه |
 | `/admin/security.php` | رویدادهای امنیتی |
-| `/dashboard/` | پنل فعال |
 
 ---
 
-## ۷. درگاه پرداخت
+## ۶. درگاه و سرویس‌های خارجی (اختیاری)
 
-### کارت‌به‌کارت (`gateway = bank` یا fallback)
+### فقط کارت‌به‌کارت
 
-فعال باید کارت/شبا در پروفایل داشته باشد. حامی مستقیم واریز می‌کند → اعلام واریز → تأیید فعال → بررسی ادمین → تسویه.
+```php
+'gateway' => 'bank',
+```
+
+فعال در پروفایل کارت/شبا می‌گذارد؛ حامی مستقیم واریز می‌کند.
 
 ### پی‌پینگ
 
-1. از پنل پی‌پینگ **توکن** بگیرید (مثل افزونه ووکامرس).  
-2. در `config.php`: `'gateway' => 'payping'` یا `'auto'` و `payping_token`.  
-3. Callback: `https://YOUR_SITE/api/callback.php?g=payping&la=...` (خود برنامه می‌سازد).
+```php
+'gateway' => 'payping', // یا auto
+'payping_token' => 'توکن از پنل پی‌پینگ',
+```
 
-### زرین‌پال / آیدی‌پی / پی‌آیر
+Callback را برنامه خودش می‌سازد: `/api/callback.php`.
 
-کلیدها را در `config.php` بگذارید و `gateway` را تنظیم کنید. Sandbox برای تست.
+### پیامک (کاوه‌نگار)
 
----
-
-## ۸. پیامک (کاوه‌نگار)
-
-برای OTP ثبت‌نام فعال لازم است:
+برای OTP ثبت‌نام فعال:
 
 ```php
 'kavenegar_api_key' => '…',
-'kavenegar_sender'  => '1000…', // در صورت نیاز
+'kavenegar_sender'  => '…', // در صورت نیاز
 ```
 
-بدون SMS، مسیر ثبت‌نام حامی (بدون OTP اجباری) همچنان کار می‌کند.
-
----
-
-## ۹. ایمیل (SMTP)
+### ایمیل SMTP
 
 ```php
 'smtp_host'   => 'mail.example.org',
@@ -150,49 +138,58 @@ chmod 750 data assets/uploads
 'mail_from'   => 'noreply@example.org',
 ```
 
-بازنشانی رمز و اعلان‌های ادمین از همین مسیر می‌روند.
+---
+
+## ۷. چک بعد از نصب
+
+- [ ] `https://your-site/` باز می‌شود
+- [ ] `https://your-site/config.php` → **403**
+- [ ] `https://your-site/data/` → **403**
+- [ ] `https://your-site/lib/` → **403**
+- [ ] ورود ادمین کار می‌کند
+- [ ] یک پرداخت تست (یا مسیر بانک) را یک‌بار امتحان کنید
+- [ ] بکاپ از `data/app.sqlite` بگیرید
 
 ---
 
-## ۱۰. چک‌لیست بعد از نصب
-
-- [ ] HTTPS کار می‌کند  
-- [ ] `config.php` از وب 403 است  
-- [ ] `/data/app.sqlite` از وب 403 است  
-- [ ] ثبت‌نام + OTP (اگر SMS دارید)  
-- [ ] ورود ادمین  
-- [ ] یک حمایت تستی (sandbox یا مبلغ کم)  
-- [ ] `source_code_url` در فوتر درست است  
-- [ ] بکاپ منظم از `data/app.sqlite`  
-
----
-
-## ۱۱. به‌روزرسانی از گیت
+## ۸. به‌روزرسانی
 
 ```bash
 cd /path/to/yavar
+# بکاپ data/
+cp -a data data-backup-$(date +%Y%m%d)
 git pull
-# config.php و data/ دست‌نخورده می‌مانند (gitignore)
 ```
 
-قبل از pull روی production یک بکاپ از `data/` بگیرید.
+`config.php` و `data/` در گیت نیستند و با pull پاک نمی‌شوند.
 
 ---
 
-## ۱۲. عیب‌یابی
+## ۹. عیب‌یابی
 
-| مشکل | کار |
-|------|-----|
-| صفحه سفید | `php.error.log` هاست؛ `display_errors` موقت |
-| 500 بعد از نصب | مجوز `data/`؛ نسخه PHP |
-| CSRF مدام | کوکی Secure روی HTTP؛ فقط HTTPS استفاده کنید |
-| ایمیل نمی‌رود | SMTP و فایروال پورت 587/465 |
-| OTP نمی‌آید | کلید کاوه‌نگار؛ rate limit (۸/ساعت IP) |
-| ادمین نیست | `admin_password_hash` و `admin_email` را دوباره تنظیم و DB تازه تست کنید |
+| مشکل | بررسی |
+|------|--------|
+| صفحه سفید / 500 | لاگ PHP هاست؛ مجوز `data/`؛ نسخه PHP |
+| CSRF مدام | فقط روی HTTPS کار کنید |
+| ایمیل نمی‌رود | SMTP، پورت 587/465، فایروال |
+| OTP نمی‌آید | کلید کاوه‌نگار؛ محدودیت نرخ (حدود ۸ درخواست/ساعت per IP) |
+| ادمین ساخته نشد | `admin_email` + `admin_password_hash` را دوباره چک کنید؛ در صورت نیاز با DB تازه تست کنید |
 
 ---
 
-## پشتیبانی جامعه
+## ساختار پوشه‌ها (خلاصه)
 
-برای نمونهٔ شیرازلینوکس: [sudoshz.ir](https://sudoshz.ir)  
-باگ‌ها و PR: مخزن Codeberg همین پروژه.
+```
+yavar/
+  index.php, login.php, register.php, …
+  config.sample.php   → کپی به config.php (محلی)
+  api/                → start, callback, confirm, otp, …
+  admin/              → مدیریت
+  dashboard/          → پنل کاربر
+  lib/                → هسته (از وب مسدود)
+  assets/             → css, js, avatars, uploads
+  data/               → sqlite و لاگ runtime (خالی در گیت)
+  docs/               → همین مستندات
+```
+
+جزئیات بیشتر: [ARCHITECTURE.md](ARCHITECTURE.md).

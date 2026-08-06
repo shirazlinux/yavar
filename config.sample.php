@@ -11,8 +11,8 @@ return [
     'site_url'       => 'https://donate.example.org',
     'community_url'  => 'https://example.org',
 
-    // لینک کد منبع (در فوتر نمایش داده می‌شود) — بعد از انتشار روی Codeberg پر کنید
-    'source_code_url' => 'https://codeberg.org/YOUR_USER/yavar',
+    // اختیاری: آدرس مخزن کد (اگر بخواهید جایی در UI لینک بدهید)
+    'source_code_url' => '',
 
     // تماس (برای نمایش / الزامات درگاه)
     'contact_email'    => 'info@example.org',
