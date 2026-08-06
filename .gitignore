@@ -1,0 +1,45 @@
+# --- Secrets & local config (NEVER commit) ---
+/config.php
+/.env
+/.env.*
+!/.env.example
+
+# --- Runtime data ---
+/data/*
+!/data/.gitkeep
+!/data/.htaccess
+/data/pending/
+/data/*.sqlite
+/data/*.sqlite-*
+/data/*.log
+/data/*.json
+!/data/.gitkeep
+
+# --- User uploads ---
+/assets/uploads/*
+!/assets/uploads/.htaccess
+!/assets/uploads/.gitkeep
+
+# --- Logs & backups ---
+*.log
+*.log.gz
+*.sqlite
+*.bak
+*~
+*.swp
+*.swo
+*.live
+
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.sublime-*
+
+# --- Composer (if added later) ---
+/vendor/
+
+# --- Local tools ---
+.phpunit.result.cache
+/node_modules/

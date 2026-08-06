@@ -1,0 +1,36 @@
+# یاور — امنیت پایه + rewrite (Apache / LiteSpeed / cPanel)
+
+DirectoryIndex index.php index.html
+
+# مسیرهای زیبا: /u/slug و /c/slug
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^u/([A-Za-z0-9\-_]+)/?$ u/index.php?slug=$1 [L,QSA]
+  RewriteRule ^c/([A-Za-z0-9\-_]+)/?$ c/index.php?slug=$1 [L,QSA]
+</IfModule>
+
+# --- هدرهای امنیتی ---
+<IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header always set Cross-Origin-Opener-Policy "same-origin-allow-popups"
+    # در صورت نیاز img-src / form-action را با دامنهٔ خودتان هماهنگ کنید
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self' https://*.payping.ir https://payping.ir https://*.zarinpal.com https://zarinpal.com https://pay.ir https://*.idpay.ir"
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+</IfModule>
+
+# مسدود کردن فایل‌های حساس از وب
+<IfModule mod_authz_core.c>
+    <FilesMatch "(?i)^(config\.php|config\.sample\.php|\.env|composer\.(json|lock)|.*\.log|payping_oauth\.json)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+RedirectMatch 403 (?i)/data/
+RedirectMatch 403 (?i)/lib/
+RedirectMatch 403 (?i)/api/_
