@@ -40,17 +40,6 @@ Document root را روی ریشهٔ همین پروژه بگذارید. اول�
 
 ---
 
-## قبل از push عمومی (چک سریع)
-
-```bash
-# نباید چیزی از این‌ها در گیت باشد:
-git status
-test ! -f config.php && echo "OK: no config.php"
-git ls-files | grep -E 'config\.php$|\.sqlite$|\.log$|uploads/.+\.(jpg|png)' && echo "FAIL" || echo "OK: clean tree"
-```
-
----
-
 ## مشارکت
 
 Issue / PR روی Codeberg. secret و دیتابیس واقعی نفرستید. جزئیات: [CONTRIBUTING.md](CONTRIBUTING.md).
