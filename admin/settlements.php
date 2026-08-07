@@ -218,7 +218,7 @@ layout_header('تسویه حمایت‌ها');
                   <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                   <input type="hidden" name="action" value="settle_user">
                   <input type="hidden" name="user_id" value="<?= (int)$g['id'] ?>">
-                  <button class="btn btn-primary" style="width:auto;padding:.35rem .7rem;font-size:.8rem" type="submit">✓ تسویه همه</button>
+                  <button class="btn btn-sm btn-primary" type="submit">✓ تسویه همه</button>
                 </form>
               </td>
             </tr>
@@ -238,7 +238,7 @@ layout_header('تسویه حمایت‌ها');
         <label style="margin:0">قدیمی‌تر از</label>
         <input type="number" name="days" min="1" max="90" value="7" style="width:5rem" class="ltr-field" dir="ltr">
         <span>روز</span>
-        <button class="btn btn-ghost" type="submit" style="width:auto">اجرای تسویه خودکار</button>
+        <button class="btn btn-ghost" type="submit">اجرای تسویه خودکار</button>
       </form>
     </div>
 
@@ -255,8 +255,8 @@ layout_header('تسویه حمایت‌ها');
       <div class="card" style="margin-top:.75rem">
         <input type="hidden" form="batch-form" name="csrf" value="<?= e(csrf_token()) ?>">
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;align-items:center">
-          <button form="batch-form" class="btn btn-primary" style="width:auto" name="action" value="settle_batch" type="submit" onclick="return confirm('موارد تیک‌خورده تسویه شوند؟');">✓ تسویه موارد انتخابی</button>
-          <button form="batch-form" class="btn btn-ghost" style="width:auto" name="action" value="refund_batch" type="submit">بازگشت موارد انتخابی</button>
+          <button form="batch-form" class="btn btn-primary btn-sm" name="action" value="settle_batch" type="submit" onclick="return confirm('موارد تیک‌خورده تسویه شوند؟');">✓ تسویه موارد انتخابی</button>
+          <button form="batch-form" class="btn btn-ghost btn-sm" name="action" value="refund_batch" type="submit">بازگشت موارد انتخابی</button>
           <input form="batch-form" name="note" placeholder="یادداشت تسویه (اختیاری)" style="flex:1;min-width:12rem">
         </div>
         <div class="table-wrap">
@@ -288,27 +288,27 @@ layout_header('تسویه حمایت‌ها');
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="action" value="approve_claim">
                       <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
-                      <button class="btn btn-primary" style="width:auto;padding:.3rem .5rem;font-size:.75rem" type="submit">✓ تأیید ادعا</button>
+                      <button class="btn btn-sm btn-primary" type="submit">✓ تأیید ادعا</button>
                     </form>
                     <form method="post" style="display:inline" onsubmit="return confirm('ادعا رد شود؟');">
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="action" value="reject_claim">
                       <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
-                      <button class="btn btn-ghost" style="width:auto;padding:.3rem .5rem;font-size:.75rem" type="submit">رد</button>
+                      <button class="btn btn-sm btn-ghost" type="submit">رد</button>
                     </form>
                   <?php elseif (($d['settlement_status'] ?? '') === 'ready'): ?>
                     <form method="post" onsubmit="return confirm('تسویه این مورد؟');">
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="action" value="settle_one">
                       <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
-                      <button class="btn btn-primary" style="width:auto;padding:.3rem .5rem;font-size:.75rem" type="submit">✓ تسویه</button>
+                      <button class="btn btn-sm btn-primary" type="submit">✓ تسویه</button>
                     </form>
                   <?php elseif (($d['settlement_status'] ?? '') === 'refund_pending'): ?>
                     <form method="post">
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="action" value="refund_one">
                       <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
-                      <button class="btn btn-ghost" style="width:auto;padding:.3rem .5rem;font-size:.75rem" type="submit">بازگشت</button>
+                      <button class="btn btn-sm btn-ghost" type="submit">بازگشت</button>
                     </form>
                   <?php else: ?>
                     ✓

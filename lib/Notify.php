@@ -13,7 +13,7 @@ final class Notify
 {
     public static function registered(?string $phone, ?string $email, string $name, array $extra = []): void
     {
-        $site = (string) (app_config()['site_url'] ?? 'https://donate.sudoshz.ir');
+        $site = (string) (app_config()['site_url'] ?? 'https://yavar.sudoshz.ir');
         $body = "ثبت‌نام شما در یاور دریافت شد و در انتظار تأیید مدیران است.\nپس از تأیید، صفحه حمایت شما فعال می‌شود.\n{$site}";
         self::sms($phone, "سلام {$name}\n{$body}");
         self::mail($email, $name, 'ثبت‌نام در یاور', $body);
@@ -38,7 +38,7 @@ final class Notify
         self::sms($phone, "سلام {$name}\n{$body}");
         self::mail($email, $name, 'خوش آمدید — یاور', $body);
 
-        $site = (string) (app_config()['site_url'] ?? 'https://donate.sudoshz.ir');
+        $site = (string) (app_config()['site_url'] ?? 'https://yavar.sudoshz.ir');
         self::admin(
             'ثبت‌نام حامی جدید',
             "حساب حامی جدید ساخته شد.\n\nنام: {$name}\nایمیل: " . trim((string) $email) . "\nموبایل: " . trim((string) $phone) . "\n\n{$site}/admin/"
@@ -49,7 +49,7 @@ final class Notify
     {
         $cfg = app_config();
         $url = rtrim((string) $cfg['site_url'], '/') . '/u/' . rawurlencode($slug);
-        $body = "حساب شما تأیید شد.\nصفحه حمایت شما:\n{$url}\nبدون کارمزد پلتفرم — شیرازلینوکس";
+        $body = "حساب شما تأیید شد.\nصفحه حمایت شما:\n{$url}\nبدون کارمزد پلتفرم — یاور";
         self::sms($phone, "سلام {$name}\n{$body}");
         self::mail($email, $name, 'تأیید عضویت — یاور', $body);
     }

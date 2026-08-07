@@ -1,0 +1,27 @@
+# یاور — https://donate.sudoshz.ir
+User-agent: *
+Allow: /
+Allow: /assets/
+Allow: /u/
+Allow: /c/
+Allow: /badge/
+Allow: /embed/
+
+# پنل و مسیرهای خصوصی
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /lib/
+Disallow: /data/
+Disallow: /config.php
+Disallow: /login.php
+Disallow: /logout.php
+Disallow: /register.php
+Disallow: /register-supporter.php
+Disallow: /checkout.php
+Disallow: /result.php
+Disallow: /forgot-password.php
+Disallow: /reset-password.php
+Disallow: /payping-callback.php
+
+Sitemap: https://donate.sudoshz.ir/sitemap.php

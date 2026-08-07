@@ -37,7 +37,7 @@ layout_header('نتیجه اتصال پی‌پینگ');
     <?php else: ?>
       <div class="form-msg show error"><?= e($error) ?></div>
     <?php endif; ?>
-    <p><a class="btn btn-primary" style="width:auto" href="/admin/payping-connect.php">بازگشت</a>
+    <p><a class="btn btn-primary" href="/admin/payping-connect.php">بازگشت</a>
        <a class="btn btn-ghost" href="/admin/">مدیریت</a></p>
   </div>
 </section>

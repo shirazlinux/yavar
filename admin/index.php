@@ -147,10 +147,10 @@ layout_header('مدیریت — آمار و تأیید');
         <form method="post" class="admin-actions">
           <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
           <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
-          <button class="btn btn-primary" style="width:auto" name="action" value="approve" type="submit">تأیید</button>
+          <button class="btn btn-primary" name="action" value="approve" type="submit">تأیید</button>
           <button class="btn btn-ghost" name="action" value="pending" type="submit">انتظار</button>
           <input type="text" name="reject_reason" placeholder="دلیل رد" style="flex:1;min-width:12rem">
-          <button class="btn btn-ghost" style="border-color:rgba(251,113,133,.5);color:#fecdd3" name="action" value="reject" type="submit">رد</button>
+          <button class="btn btn-danger-ghost" name="action" value="reject" type="submit">رد</button>
         </form>
       </article>
     <?php endforeach; ?>

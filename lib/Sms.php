@@ -86,7 +86,7 @@ final class Sms
     {
         $cfg = app_config();
         $url = rtrim((string) $cfg['site_url'], '/') . '/u/' . rawurlencode($slug);
-        $msg = "سلام {$name}\nحساب شما تأیید شد. صفحه حمایت:\n{$url}\nبدون کارمزد — شیرازلینوکس";
+        $msg = "سلام {$name}\nحساب شما تأیید شد. صفحه حمایت:\n{$url}\nبدون کارمزد — یاور";
         self::send($mobile, $msg);
     }
 

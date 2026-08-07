@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/lib/layout.php';
 layout_header(
     'روش‌های حمایت',
-    'روش‌های حمایت غیرمالی و مالی از فعالان و پروژه‌های نرم‌افزار آزاد — یاور'
+    'روش‌های حمایت در یاور: درگاه آنلاین، کارت‌به‌کارت و اعلام واریز — مستقیم به فعالان نرم‌افزار آزاد، بدون کارمزد پلتفرم.'
 );
 ?>
 <section class="page-section">
@@ -21,7 +21,7 @@ layout_header(
         ما شفافیت را اصل می‌دانیم و گزارش‌های مالی مربوط به حمایت‌ها به‌صورت دوره‌ای منتشر می‌شود.
       </p>
       <p class="hint" style="margin:.75rem 0 0">
-        گزارش مالی: <a href="https://sudoshz.ir/transparency/" target="_blank" rel="noopener">صفحه شفافیت شیرازلینوکس</a>
+        
         ·
         <a href="/">فهرست یاور</a>
       </p>
@@ -71,8 +71,10 @@ layout_header(
       <p>شما می‌توانید از طریق پلتفرم <strong>یاور</strong> به‌صورت مستقیم و بدون کارمزد از فعالان و پروژه‌های نرم‌افزار آزاد حمایت کنید.</p>
       <p>تمام مبالغ حمایت مستقیماً به حساب فعال یا پروژه واریز می‌شود و در گزارش‌های شفاف منعکس می‌گردد.</p>
       <p style="margin-top:1rem">
-        <a class="btn btn-primary" style="width:auto" href="/#directory">حمایت کنید — فهرست فعالان</a>
+        <div class="btn-toolbar">
+        <a class="btn btn-primary" href="/#directory">حمایت کنید — فهرست فعالان</a>
         <a class="btn btn-ghost" href="/about.php">خط‌مشی</a>
+        </div>
       </p>
     </div>
 

@@ -14,7 +14,7 @@ $st->execute([$slug, 'approved']);
 $user = $st->fetch();
 if (!$user) {
     http_response_code(404);
-    layout_header('یافت نشد');
+    layout_header('یافت نشد', 'صفحه مورد نظر یافت نشد.', ['noindex' => true]);
     echo '<section class="page-section"><div class="container narrow"><h1>صفحه یافت نشد</h1><a href="/">خانه</a></div></section>';
     layout_footer();
     exit;
@@ -51,7 +51,37 @@ $social = social_links_from_user($user);
 $socialDefs = social_network_defs();
 $services = trim((string) ($user['services'] ?? ''));
 
-layout_header('حمایت از ' . $publicName, $user['activity']);
+$seoDesc = trim((string) ($user['activity'] ?? ''));
+if ($seoDesc === '') {
+    $seoDesc = trim((string) ($user['bio'] ?? ''));
+}
+if ($seoDesc === '') {
+    $seoDesc = 'حمایت مستقیم از ' . $publicName . ' — فعال نرم‌افزار آزاد در پلتفرم یاور · بدون کارمزد';
+} else {
+    $seoDesc = 'حمایت از ' . $publicName . ' — ' . $seoDesc;
+}
+$ogImg = $avatarUrl;
+if ($ogImg !== '' && !preg_match('#^https?://#i', $ogImg)) {
+    $ogImg = rtrim((string) ($cfg['site_url'] ?? 'https://donate.sudoshz.ir'), '/') . '/' . ltrim($ogImg, '/');
+}
+layout_header('حمایت از ' . $publicName, $seoDesc, [
+    'type' => 'profile',
+    'image' => $ogImg !== '' ? $ogImg : '',
+    'image_alt' => $publicName . ' — یاور',
+    'jsonld' => [
+        '@type' => 'ProfilePage',
+        'name' => $publicName,
+        'description' => $seoDesc,
+        'url' => rtrim((string) ($cfg['site_url'] ?? ''), '/') . '/u/' . rawurlencode($slug),
+        'mainEntity' => [
+            '@type' => 'Person',
+            'name' => $publicName,
+            'description' => trim((string) ($user['activity'] ?? $user['bio'] ?? '')),
+            'image' => $ogImg !== '' ? $ogImg : null,
+            'url' => rtrim((string) ($cfg['site_url'] ?? ''), '/') . '/u/' . rawurlencode($slug),
+        ],
+    ],
+]);
 ?>
 <section class="page-section">
   <div class="container hero-grid">
@@ -86,12 +116,14 @@ layout_header('حمایت از ' . $publicName, $user['activity']);
       ?>
       <?php if ($me): ?>
       <div class="card" style="box-shadow:none;margin:1rem 0">
-        <button type="button" class="btn btn-ghost" style="width:auto" id="btn-like" data-id="<?= (int)$user['id'] ?>"><?= $liked ? '★ در علاقه‌مندی‌ها' : '☆ افزودن به علاقه‌مندی' ?></button>
+        <div class="btn-toolbar" style="margin-top:0">
+          <button type="button" class="btn btn-ghost" id="btn-like" data-id="<?= (int)$user['id'] ?>"><?= $liked ? '★ در علاقه‌مندی‌ها' : '☆ افزودن به علاقه‌مندی' ?></button>
+        </div>
         <div style="margin-top:.75rem">
           <label>هدف حمایت ماهانه من (تومان)</label>
           <div class="otp-row">
             <input id="pledge-amount" class="ltr-field money-input" dir="ltr" value="<?= e(number_fa($pledgeAmt)) ?>">
-            <button type="button" class="btn btn-primary" style="width:auto" id="btn-pledge" data-id="<?= (int)$user['id'] ?>">ذخیره هدف</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-pledge" data-id="<?= (int)$user['id'] ?>">ذخیره هدف</button>
           </div>
           <p class="hint" id="pledge-status"></p>
         </div>
@@ -234,7 +266,7 @@ layout_header('حمایت از ' . $publicName, $user['activity']);
         <div class="hp"><input type="text" id="website" tabindex="-1" autocomplete="off"></div>
         <input type="hidden" id="cause" value="activists">
         <input type="hidden" id="activist_id" value="<?= (int)$user['id'] ?>">
-        <button type="submit" class="btn btn-primary" id="submit-btn">پرداخت و حمایت</button>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">پرداخت و حمایت</button>
         <div id="form-msg" class="form-msg" role="status"></div>
       </form>
     </aside>

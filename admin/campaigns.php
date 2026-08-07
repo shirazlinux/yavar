@@ -114,7 +114,7 @@ layout_header('مدیریت کمپین‌ها');
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="action" value="cancel">
                       <input type="hidden" name="campaign_id" value="<?= (int) $c['id'] ?>">
-                      <button type="submit" class="btn btn-ghost" style="width:auto;padding:.35rem .7rem;font-size:.82rem;border-color:rgba(251,113,133,.45);color:#fecdd3">لغو کمپین</button>
+                      <button type="submit" class="btn btn-sm btn-danger-ghost">لغو کمپین</button>
                     </form>
                   <?php else: ?>
                     <span class="hint">—</span>

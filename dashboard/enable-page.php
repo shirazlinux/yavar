@@ -37,7 +37,7 @@ layout_header('فعال‌سازی صفحه حمایت');
     <form method="post" class="card form-card">
       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
       <input type="hidden" name="action" value="enable">
-      <button class="btn btn-primary" type="submit">بله، صفحه حمایت می‌خواهم</button>
+      <button class="btn btn-primary btn-block" type="submit">بله، صفحه حمایت می‌خواهم</button>
       <p class="form-note"><a href="/dashboard/supporter.php">فعلاً نه — بازگشت به پنل حامی</a></p>
     </form>
   </div>

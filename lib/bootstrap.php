@@ -28,6 +28,15 @@ function app_config(): array
             }
         }
     }
+    // دامنهٔ فعال: donate (اصلی). yavar فقط در صورت باز شدن همان host
+    if (PHP_SAPI !== 'cli') {
+        $host = strtolower((string) preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+        if ($host === 'yavar.sudoshz.ir' || $host === 'www.yavar.sudoshz.ir') {
+            $cfg['site_url'] = 'https://yavar.sudoshz.ir';
+        } else {
+            $cfg['site_url'] = 'https://donate.sudoshz.ir';
+        }
+    }
     return $cfg;
 }
 

@@ -98,7 +98,7 @@ final class Mail
 
         try {
             self::smtpExpect($fp, [220]);
-            self::smtpCmd($fp, 'EHLO donate.sudoshz.ir', [250]);
+            self::smtpCmd($fp, 'EHLO yavar.sudoshz.ir', [250]);
 
             if ($secure === 'tls' || $secure === 'starttls') {
                 self::smtpCmd($fp, 'STARTTLS', [220]);
@@ -109,7 +109,7 @@ final class Mail
                 if (!@stream_socket_enable_crypto($fp, true, $crypto)) {
                     throw new RuntimeException('STARTTLS ناموفق');
                 }
-                self::smtpCmd($fp, 'EHLO donate.sudoshz.ir', [250]);
+                self::smtpCmd($fp, 'EHLO yavar.sudoshz.ir', [250]);
             }
 
             self::smtpCmd($fp, 'AUTH LOGIN', [334]);
@@ -181,12 +181,13 @@ final class Mail
         return str_replace("\n", "\r\n", $body);
     }
 
-    /** قالب HTML با لوگوی سایت (فعلاً آیکون شیرازلینوکس؛ بعداً لوگو اختصاصی یاور) */
+    /** قالب HTML با لوگوی یاور */
     private static function buildHtml(string $subject, string $bodyText, array $cfg): string
     {
-        $site = rtrim((string) ($cfg['site_url'] ?? 'https://donate.sudoshz.ir'), '/');
+        $site = rtrim((string) ($cfg['site_url'] ?? 'https://yavar.sudoshz.ir'), '/');
         $name = htmlspecialchars((string) ($cfg['site_name'] ?? 'یاور'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $logo = htmlspecialchars((string) ($cfg['mail_logo_url'] ?? 'https://sudoshz.ir/media/website/webicon320.png'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $tag = htmlspecialchars((string) ($cfg['tagline'] ?? 'پلتفرم حمایت از پروژه‌ها و جوامع نرم‌افزار آزاد'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $logo = htmlspecialchars((string) ($cfg['mail_logo_url'] ?? ($site . '/assets/brand/logo-header.png')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $subj = htmlspecialchars($subject, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $htmlBody = nl2br(htmlspecialchars($bodyText, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
         $siteEsc = htmlspecialchars($site, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -200,14 +201,14 @@ final class Mail
     <tr><td align="center">
       <table role="presentation" width="100%" style="max-width:560px;background:#162033;border:1px solid rgba(148,163,184,.2);border-radius:16px;overflow:hidden;">
         <tr>
-          <td style="padding:20px 24px;background:linear-gradient(135deg,rgba(241,89,45,.18),transparent);border-bottom:1px solid rgba(148,163,184,.15);">
+          <td style="padding:20px 24px;background:linear-gradient(135deg,rgba(176,64,64,.22),transparent);border-bottom:1px solid rgba(148,163,184,.15);">
             <table role="presentation" cellspacing="0" cellpadding="0"><tr>
               <td style="vertical-align:middle;padding-left:12px;">
                 <img src="{$logo}" width="40" height="40" alt="{$name}" style="display:block;border-radius:10px;border:0;">
               </td>
               <td style="vertical-align:middle;">
                 <div style="font-size:18px;font-weight:700;color:#fff;">{$name}</div>
-                <div style="font-size:12px;color:#94a3b8;">شیرازلینوکس · بدون کارمزد</div>
+                <div style="font-size:12px;color:#94a3b8;">{$tag}</div>
               </td>
             </tr></table>
           </td>
@@ -221,7 +222,7 @@ final class Mail
         <tr>
           <td style="padding:16px 24px 22px;border-top:1px solid rgba(148,163,184,.12);font-size:12px;color:#94a3b8;">
             <a href="{$siteEsc}" style="color:#ff8a5c;text-decoration:none;">{$siteEsc}</a>
-            · یاور · نرم‌افزار آزاد
+            · یاور · بدون کارمزد
           </td>
         </tr>
       </table>

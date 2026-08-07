@@ -169,8 +169,8 @@ $presets = avatar_presets();
         <li>فعال‌سازی صفحه حمایت <strong>بعداً از پنل</strong> هم ممکن است.</li>
       </ul>
       <p style="margin:.75rem 0 0">الان چه می‌خواهید؟</p>
-      <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.6rem">
-        <a class="btn btn-primary" style="width:auto" href="#reg-form">صفحه حمایت می‌خواهم (فعال/پروژه)</a>
+      <div class="btn-toolbar" style="margin-top:.6rem">
+        <a class="btn btn-primary" href="#reg-form">صفحه حمایت می‌خواهم (فعال/پروژه)</a>
         <a class="btn btn-ghost" href="/register-supporter.php">فعلاً فقط حامی هستم</a>
       </div>
       <p class="hint" style="margin-top:.75rem;margin-bottom:0">اگر صفحه حمایت بسازید، همزمان می‌توانید از دیگران هم حمایت و دنبال‌شان کنید.</p>
@@ -178,12 +178,12 @@ $presets = avatar_presets();
 
     <h1 class="page-title" id="reg-form">ثبت‌نام — صفحه حمایت</h1>
     <p class="page-lead">اگر در حوزهٔ نرم‌افزار آزاد فعالیت می‌کنید، صفحه حمایت بسازید و از جامعه حمایت بگیرید — <strong>بدون کارمزد پلتفرم</strong>.</p>
-    <div class="policy-box" style="margin-bottom:1rem"><strong>سیاست شیرازلینوکس:</strong> فقط فعالان مرتبط با نرم‌افزار آزاد تأیید می‌شوند. پروژه یا خدمت غیرآزاد رد می‌شود.</div>
+    <div class="policy-box" style="margin-bottom:1rem"><strong>سیاست یاور:</strong> فقط فعالان مرتبط با نرم‌افزار آزاد تأیید می‌شوند. پروژه یا خدمت غیرآزاد رد می‌شود.</div>
 
     <?php if ($ok): ?>
       <div class="form-msg show ok">
         عضویت ثبت شد و در <strong>انتظار تأیید</strong> است. پیامک و ایمیل اطلاع‌رسانی ارسال شد.
-        <br><br><a class="btn btn-primary" style="width:auto" href="/login.php">ورود</a>
+        <br><br><a class="btn btn-primary" href="/login.php">ورود</a>
       </div>
     <?php else: ?>
       <?php if ($errors): ?>
@@ -204,7 +204,7 @@ $presets = avatar_presets();
         <input id="platform_name" name="platform_name" maxlength="80" value="<?= e($_POST['platform_name'] ?? '') ?>" placeholder="مثلاً نام پروژه یا جامعه آزاد">
 
         <label for="slug">آدرس صفحه (لاتین، اختیاری)</label>
-        <div class="input-prefix"><span>donate.sudoshz.ir/u/</span>
+        <div class="input-prefix"><span>yavar.sudoshz.ir/u/</span>
           <input id="slug" name="slug" maxlength="40" pattern="[A-Za-z0-9\-_]*" value="<?= e($_POST['slug'] ?? '') ?>" placeholder="my-name" dir="ltr" class="ltr-field">
         </div>
 
@@ -226,7 +226,7 @@ $presets = avatar_presets();
         <p class="hint" style="margin:0 0 .35rem">فقط برای اطلاع‌رسانی حمایت؛ در صفحه عمومی نمایش داده نمی‌شود.</p>
         <div class="otp-row">
           <input id="phone" type="tel" name="phone" required dir="ltr" class="ltr-field" inputmode="tel" maxlength="13" placeholder="0912xxxxxxx" value="<?= e($_POST['phone'] ?? '') ?>">
-          <button type="button" class="btn btn-ghost" id="btn-send-otp" style="width:auto;white-space:nowrap">ارسال کد</button>
+          <button type="button" class="btn btn-ghost" id="btn-send-otp">ارسال کد</button>
         </div>
         <label for="otp">کد تأیید ۶ رقمی پیامک *</label>
         <input id="otp" name="otp" required dir="ltr" class="ltr-field" inputmode="numeric" maxlength="6" placeholder="123456" value="<?= e($_POST['otp'] ?? '') ?>">
@@ -269,7 +269,7 @@ $presets = avatar_presets();
           <span>خط‌مشی را می‌پذیرم: ویژهٔ نرم‌افزار آزاد، بدون کارمزد پلتفرم.</span>
         </label>
 
-        <button type="submit" class="btn btn-primary">ثبت‌نام — صفحه حمایت</button>
+        <button type="submit" class="btn btn-primary btn-block">ثبت‌نام — صفحه حمایت</button>
         <p class="form-note">حساب دارید؟ <a href="/login.php">ورود</a></p>
       </form>
     <?php endif; ?>

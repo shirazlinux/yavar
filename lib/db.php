@@ -133,7 +133,67 @@ CREATE TABLE IF NOT EXISTS security_events (
   detail TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS telegram_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL UNIQUE,
+  chat_id TEXT NOT NULL DEFAULT '',
+  chat_type TEXT NOT NULL DEFAULT '',
+  chat_title TEXT NOT NULL DEFAULT '',
+  connect_token_hash TEXT NOT NULL DEFAULT '',
+  connect_expires_at TEXT,
+  enabled INTEGER NOT NULL DEFAULT 0,
+  linked_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS telegram_outbox (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  chat_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  tries INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT NOT NULL DEFAULT '',
+  donation_id INTEGER,
+  created_at TEXT NOT NULL,
+  sent_at TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_tg_outbox_status ON telegram_outbox(status, id);
+CREATE INDEX IF NOT EXISTS idx_tg_links_token ON telegram_links(connect_token_hash);
 SQL);
+
+    // ستون‌های جدا برای PV / گروه + متن CTA قابل تنظیم
+    try {
+        $tgCols = $pdo->query('PRAGMA table_info(telegram_links)')->fetchAll();
+        $tgNames = array_column($tgCols, 'name');
+        foreach ([
+            'private_chat_id' => "TEXT NOT NULL DEFAULT ''",
+            'group_chat_id' => "TEXT NOT NULL DEFAULT ''",
+            'group_chat_type' => "TEXT NOT NULL DEFAULT ''",
+            'group_chat_title' => "TEXT NOT NULL DEFAULT ''",
+            'announce_cta' => "TEXT NOT NULL DEFAULT ''",
+            'notify_private' => 'INTEGER NOT NULL DEFAULT 1',
+        ] as $col => $def) {
+            if (!in_array($col, $tgNames, true)) {
+                $pdo->exec("ALTER TABLE telegram_links ADD COLUMN {$col} {$def}");
+            }
+        }
+        // مهاجرت از chat_id قدیمی
+        $pdo->exec(
+            "UPDATE telegram_links SET group_chat_id = chat_id, group_chat_type = chat_type, group_chat_title = chat_title
+             WHERE chat_id <> '' AND chat_type IN ('group','supergroup','channel')
+               AND (group_chat_id IS NULL OR group_chat_id = '')"
+        );
+        $pdo->exec(
+            "UPDATE telegram_links SET private_chat_id = chat_id
+             WHERE chat_id <> '' AND chat_type = 'private'
+               AND (private_chat_id IS NULL OR private_chat_id = '')"
+        );
+    } catch (Throwable $e) {
+        error_log('tg migrate: ' . $e->getMessage());
+    }
 
     $cols = $pdo->query('PRAGMA table_info(users)')->fetchAll();
     $names = array_column($cols, 'name');

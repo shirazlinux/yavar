@@ -88,13 +88,15 @@ layout_header('اتصال پی‌پینگ');
         <input type="hidden" name="action" value="save_token">
         <label for="payping_token">توکن (Bearer) — مثل فیلد افزونه ووکامرس</label>
         <textarea id="payping_token" name="payping_token" rows="4" dir="ltr" placeholder="توکن را اینجا بچسبان…"><?= e($savedToken) ?></textarea>
-        <button class="btn btn-primary" type="submit">ذخیره و تست خودکار</button>
+        <button class="btn btn-primary btn-block" type="submit">ذخیره و تست خودکار</button>
       </form>
-      <form method="post" style="margin-top:.5rem">
+      <div class="btn-toolbar" style="margin-top:.5rem">
+      <form method="post">
         <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="action" value="test_token">
         <button class="btn btn-ghost" type="submit">فقط تست توکن ذخیره‌شده</button>
       </form>
+      </div>
     </div>
 
     <div class="card" style="margin-top:1rem">

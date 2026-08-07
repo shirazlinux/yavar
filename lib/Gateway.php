@@ -199,6 +199,24 @@ final class Gateway
                     $ref
                 );
             }
+            // اعلان تلگرام کانال/گروه (صف → worker خارج)
+            try {
+                require_once __DIR__ . '/Telegram.php';
+                $anon = !empty($pending['anonymous']);
+                $donor = (string) ($pending['name'] ?? '');
+                $donId = (int) ($pending['donation_id'] ?? 0);
+                Telegram::enqueueDonationPaid(
+                    (int) $pending['activist_id'],
+                    (int) $pending['amount'],
+                    $ref,
+                    $donId,
+                    $anon,
+                    $donor,
+                    (string) ($pending['message'] ?? '')
+                );
+            } catch (Throwable $e) {
+                error_log('Telegram enqueue: ' . $e->getMessage());
+            }
         }
         return true;
     }

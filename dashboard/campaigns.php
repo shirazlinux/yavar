@@ -152,7 +152,7 @@ layout_header('کمپین‌های حمایت');
         <label style="display:flex;gap:.5rem;align-items:center;margin-top:.75rem">
           <input type="checkbox" name="publish" value="1" <?= $formPublish ? 'checked' : '' ?>> انتشار فوری
         </label>
-        <button class="btn btn-primary" type="submit" style="margin-top:1rem">ثبت</button>
+        <button class="btn btn-primary btn-block" type="submit">ثبت</button>
       </form>
     </div>
 
@@ -178,7 +178,7 @@ layout_header('کمپین‌های حمایت');
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="action" value="publish">
                       <input type="hidden" name="campaign_id" value="<?= (int)$c['id'] ?>">
-                      <button class="btn btn-primary" style="width:auto;padding:.35rem .7rem;font-size:.82rem" type="submit">انتشار</button>
+                      <button class="btn btn-sm btn-primary" type="submit">انتشار</button>
                     </form>
                   <?php endif; ?>
                   <?php if (in_array($c['status'], ['draft','active'], true)): ?>
@@ -186,7 +186,7 @@ layout_header('کمپین‌های حمایت');
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="action" value="cancel">
                       <input type="hidden" name="campaign_id" value="<?= (int)$c['id'] ?>">
-                      <button class="btn btn-ghost" style="width:auto;padding:.35rem .7rem;font-size:.82rem;border-color:rgba(251,113,133,.45);color:#fecdd3" type="submit">لغو کمپین</button>
+                      <button class="btn btn-sm btn-danger-ghost" type="submit">لغو کمپین</button>
                     </form>
                   <?php else: ?>
                     <span class="hint">—</span>

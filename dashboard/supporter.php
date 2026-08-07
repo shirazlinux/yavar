@@ -65,7 +65,7 @@ require_once dirname(__DIR__) . '/lib/profile.php';
         <label>سقف / هدف حمایت ماهانه (تومان)</label>
         <input name="monthly_budget" class="ltr-field money-input" dir="ltr" value="<?= e(number_format((int)($user['monthly_budget']??0))) ?>">
         <label class="check-line"><input type="checkbox" name="feed_enabled" value="1" <?= !empty($user['feed_enabled'])?'checked':'' ?>> عضویت در خبرخوان کمپین‌های فعال</label>
-        <button class="btn btn-primary" type="submit">ذخیره</button>
+        <button class="btn btn-primary btn-block" type="submit">ذخیره</button>
       </form>
     </div>
 
@@ -78,7 +78,7 @@ require_once dirname(__DIR__) . '/lib/profile.php';
           <?php foreach ($likedHamyars as $h): ?>
             <article class="cause">
               <h3 style="margin:0"><?= e(member_public_name($h)) ?></h3>
-              <a class="btn btn-ghost" style="width:auto;margin-top:.5rem" href="/u/<?= e(rawurlencode($h['slug'])) ?>">مشاهده و حمایت</a>
+              <a class="btn btn-ghost" href="/u/<?= e(rawurlencode($h['slug'])) ?>">مشاهده و حمایت</a>
             </article>
           <?php endforeach; ?>
         </div>

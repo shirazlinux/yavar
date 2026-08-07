@@ -43,3 +43,8 @@ Thumbs.db
 # --- Local tools ---
 .phpunit.result.cache
 /node_modules/
+
+# Server local (never public)
+/php.ini
+/.user.ini
+/payping_oauth.json

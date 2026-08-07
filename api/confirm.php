@@ -73,6 +73,21 @@ if ($action === 'confirm' && $d['status'] === 'pending') {
                 $ref
             );
         }
+        // تلگرام: بعد از paid (ادعای فعال یا تأیید ادمین) — تشویق مخاطب
+        try {
+            require_once dirname(__DIR__) . '/lib/Telegram.php';
+            Telegram::enqueueDonationPaid(
+                (int) $d['user_id'],
+                (int) $d['amount'],
+                $ref,
+                (int) $id,
+                !empty($d['is_anonymous']),
+                (string) ($d['donor_name'] ?? ''),
+                (string) ($d['message'] ?? '')
+            );
+        } catch (Throwable $e) {
+            error_log('Telegram enqueue confirm: ' . $e->getMessage());
+        }
     }
 }
 

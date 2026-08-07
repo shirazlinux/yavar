@@ -34,17 +34,17 @@ $campaigns = db()->query(
 
 layout_header(
     'یاور',
-    'یاور — حمایت مستقیم از فعالان و پروژه‌های نرم‌افزار آزاد · بدون کارمزد'
+    'یاور، یاری‌رسان حامیان نرم‌افزار آزاد — پلتفرم عام‌المنفعه برای حمایت مستقیم از فعالان، جوامع و پروژه‌های نرم‌افزار آزاد؛ بدون کارمزد پلتفرم.'
 );
 ?>
 <section class="hero">
   <div class="container hero-grid">
     <div>
-      <div class="eyebrow">یاور · بدون کارمزد · نرم‌افزار آزاد</div>
-      <h1>حمایت مستقیم از<br><em>فعالان و پروژه‌های نرم‌افزار آزاد</em></h1>
+      <div class="eyebrow">یاور · پلتفرم حمایت · بدون کارمزد</div>
+      <h1>حمایت مستقیم از<br><em>پروژه‌ها و جوامع نرم‌افزار آزاد</em></h1>
       <p class="lead">
-        یاور بستری است برای حمایت مستقیم و بدون واسطه از فعالان و پروژه‌های نرم‌افزار آزاد.
-        تمام مبلغ بدون هیچ کارمزدی به دست اعضا می‌رسد.
+        یاور پلتفرم حمایت از پروژه‌ها و جوامع نرم‌افزار آزاد است؛ حمایت مستقیم و بدون واسطه.
+        تمام مبلغ بدون کارمزد پلتفرم به دست اعضا می‌رسد.
       </p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="/register.php">ساخت حساب</a>
@@ -124,7 +124,7 @@ layout_header(
             </div>
             <p><?= e(mb_substr($a['bio'] ?: $a['activity'], 0, 140)) ?><?= mb_strlen($a['bio'] ?: $a['activity']) > 140 ? '…' : '' ?></p>
             <p class="hint" style="margin:0">جمع حمایت: <strong><?= e(money_fa($tot['sum'])) ?></strong></p>
-            <a class="btn btn-ghost" style="width:auto;margin-top:auto" href="/u/<?= e(rawurlencode($a['slug'])) ?>">مشاهده و حمایت</a>
+            <a class="btn btn-ghost" href="/u/<?= e(rawurlencode($a['slug'])) ?>">مشاهده و حمایت</a>
           </article>
         <?php endforeach; ?>
       </div>
@@ -135,7 +135,7 @@ layout_header(
 <section id="policy-home">
   <div class="container">
     <div class="policy-box">
-      <h2>سیاست شیرازلینوکس</h2>
+      <h2>سیاست یاور</h2>
       <ul>
         <li>این بستر فقط برای حمایت از فعالان و پروژه‌های نرم‌افزار آزاد است.</li>
         <li>پروژه‌ها یا فعالیت‌های غیرمرتبط یا غیرازاد تأیید نمی‌شوند.</li>

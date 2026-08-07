@@ -48,8 +48,10 @@ layout_header('پنل من');
       <div class="dash-actions">
         <a class="btn btn-ghost" href="/dashboard/profile.php">ویرایش صفحه</a>
         <a class="btn btn-ghost" href="/dashboard/campaigns.php">حمایت‌های هدفمند</a>
+        <a class="btn btn-ghost" href="/dashboard/telegram.php">اعلان تلگرام</a>
+        <a class="btn btn-ghost" href="/dashboard/widgets.php">ابزارک و بج</a>
         <?php if ($user['status'] === 'approved'): ?>
-          <a class="btn btn-primary" style="width:auto" href="<?= e($publicPath) ?>" target="_blank" rel="noopener">صفحه عمومی</a>
+          <a class="btn btn-primary" href="<?= e($publicPath) ?>" target="_blank" rel="noopener">صفحه عمومی</a>
         <?php endif; ?>
       </div>
     </div>
@@ -129,12 +131,12 @@ layout_header('پنل من');
                     <form method="post" action="/api/confirm.php" style="display:inline" onsubmit="return confirm('مبلغ واقعاً به حساب‌تان رسیده؟');">
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
-                      <button class="btn btn-primary" style="width:auto;padding:.3rem .55rem;font-size:.75rem" name="action" value="confirm" type="submit">✓ تأیید دریافت</button>
+                      <button class="btn btn-sm btn-primary" name="action" value="confirm" type="submit">✓ تأیید دریافت</button>
                     </form>
                     <form method="post" action="/api/confirm.php" style="display:inline;margin-inline-start:.25rem" onsubmit="return confirm('رد شود؟');">
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
-                      <button class="btn btn-ghost" style="width:auto;padding:.3rem .55rem;font-size:.75rem" name="action" value="reject" type="submit">رد</button>
+                      <button class="btn btn-sm btn-ghost" name="action" value="reject" type="submit">رد</button>
                     </form>
                   <?php elseif (($d['status'] ?? '') === 'paid' && ($d['settlement_status'] ?? '') === 'none'): ?>
                     <span class="hint">در صف بررسی ادمین</span>

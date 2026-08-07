@@ -2,10 +2,10 @@
 declare(strict_types=1);
 require_once __DIR__ . '/lib/layout.php';
 $cfg = app_config();
-layout_header('تماس', 'تماس با بستر یاور فعالان نرم‌افزار آزاد — شیرازلینوکس');
+layout_header('ارتباط با ما', 'راه‌های ارتباط با یاور — پلتفرم عام‌المنفعه حمایت از فعالان و پروژه‌های نرم‌افزار آزاد.');
 $phone = '09353554898';
-$site = preg_replace('#^https?://#i', '', rtrim((string) ($cfg['site_url'] ?? 'donate.sudoshz.ir'), '/'));
-$community = preg_replace('#^https?://#i', '', rtrim((string) ($cfg['community_url'] ?? 'sudoshz.ir'), '/'));
+$site = preg_replace('#^https?://#i', '', rtrim((string) ($cfg['site_url'] ?? 'https://yavar.sudoshz.ir'), '/'));
+$email = (string) ($cfg['contact_email'] ?? $cfg['admin_notify_email'] ?? '');
 ?>
 <section class="page-section">
   <div class="container narrow">
@@ -21,14 +21,16 @@ $community = preg_replace('#^https?://#i', '', rtrim((string) ($cfg['community_u
           <th>نشانی پلتفرم</th>
           <td dir="ltr"><a href="https://<?= e($site) ?>"><?= e($site) ?></a></td>
         </tr>
+        <?php if ($email !== ''): ?>
         <tr>
-          <th>جامعه شیرازلینوکس</th>
-          <td dir="ltr"><a href="https://<?= e($community) ?>"><?= e($community) ?></a></td>
+          <th>ایمیل</th>
+          <td dir="ltr"><a href="mailto:<?= e($email) ?>"><?= e($email) ?></a></td>
         </tr>
+        <?php endif; ?>
       </table>
     </div>
     <p style="margin-top:1rem">
-      <a class="btn btn-primary" style="width:auto" href="tel:+98<?= e(ltrim($phone, '0')) ?>">تماس تلفنی</a>
+      <a class="btn btn-primary" href="tel:+98<?= e(ltrim($phone, '0')) ?>">تماس تلفنی</a>
       <a class="btn btn-ghost" href="/">خانه</a>
     </p>
   </div>

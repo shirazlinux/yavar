@@ -16,7 +16,7 @@ $st->execute([$slug]);
 $c = $st->fetch();
 if (!$c || $c['user_status'] !== 'approved') {
     http_response_code(404);
-    layout_header('یافت نشد');
+    layout_header('یافت نشد', 'صفحه مورد نظر یافت نشد.', ['noindex' => true]);
     echo '<section class="page-section"><div class="container narrow"><h1>یافت نشد</h1><a href="/">خانه</a></div></section>';
     layout_footer();
     exit;
@@ -34,7 +34,14 @@ if (!$tiers) {
 }
 $canPay = $c['status'] === 'active';
 
-layout_header($c['title'], mb_substr($c['description'], 0, 160));
+$campDesc = trim(preg_replace('/\s+/u', ' ', (string) $c['description']) ?? '');
+if (function_exists('mb_substr') && mb_strlen($campDesc) > 160) {
+    $campDesc = mb_substr($campDesc, 0, 157) . '…';
+}
+layout_header((string) $c['title'], $campDesc !== '' ? $campDesc : ('کمپین حمایت: ' . $c['title'] . ' — یاور'), [
+    'type' => 'article',
+    'image_alt' => (string) $c['title'],
+]);
 ?>
 <section class="page-section">
   <div class="container hero-grid">

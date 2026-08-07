@@ -1,30 +1,45 @@
-# یاور — امنیت پایه + rewrite (Apache / LiteSpeed / cPanel)
+# یاور — security + rewrite
+# BEGIN cPanel-generated php ini directives, do not edit
+<IfModule php7_module>
+   php_value error_log "/home/sudoshzi/logs/php.error.log"
+   php_flag log_errors On
+</IfModule>
+<IfModule lsapi_module>
+   php_value error_log "/home/sudoshzi/logs/php.error.log"
+   php_flag log_errors On
+</IfModule>
+# END cPanel-generated php ini directives, do not edit
 
 DirectoryIndex index.php index.html
 
-# مسیرهای زیبا: /u/slug و /c/slug
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # دامنه اصلی sudoshz.ir نباید اپ یاور را سرو کند
+  RewriteCond %{HTTP_HOST} ^(www\.)?sudoshz\.ir$ [NC]
+  RewriteRule ^.*$ /main-sudoshz/donate/index.html [L]
+
   RewriteRule ^u/([A-Za-z0-9\-_]+)/?$ u/index.php?slug=$1 [L,QSA]
   RewriteRule ^c/([A-Za-z0-9\-_]+)/?$ c/index.php?slug=$1 [L,QSA]
+  RewriteRule ^badge/([A-Za-z0-9\-_]+)\.svg$ badge.php?slug=$1 [L,QSA]
+  RewriteRule ^badge/([A-Za-z0-9\-_]+)/?$ badge.php?slug=$1 [L,QSA]
 </IfModule>
 
-# --- هدرهای امنیتی ---
+SetEnvIf Request_URI "^/embed/" yavar_embed
 <IfModule mod_headers.c>
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always unset X-Frame-Options
+    Header always set X-Frame-Options "SAMEORIGIN" env=!yavar_embed
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
-    Header always set Cross-Origin-Opener-Policy "same-origin-allow-popups"
-    # در صورت نیاز img-src / form-action را با دامنهٔ خودتان هماهنگ کنید
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self' https://*.payping.ir https://payping.ir https://*.zarinpal.com https://zarinpal.com https://pay.ir https://*.idpay.ir"
+    Header always set Cross-Origin-Opener-Policy "same-origin-allow-popups" env=!yavar_embed
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://sudoshz.ir https://trustseal.enamad.ir https://shirazweb.net; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self' https://*.payping.ir https://payping.ir https://*.zarinpal.com https://zarinpal.com" env=!yavar_embed
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors *" env=yavar_embed
     Header always unset X-Powered-By
     Header unset X-Powered-By
 </IfModule>
-
-# مسدود کردن فایل‌های حساس از وب
 <IfModule mod_authz_core.c>
     <FilesMatch "(?i)^(config\.php|config\.sample\.php|\.env|composer\.(json|lock)|.*\.log|payping_oauth\.json)$">
         Require all denied
@@ -34,3 +49,9 @@ DirectoryIndex index.php index.html
 RedirectMatch 403 (?i)/data/
 RedirectMatch 403 (?i)/lib/
 RedirectMatch 403 (?i)/api/_
+
+# php -- BEGIN cPanel-generated handler, do not edit
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php82 .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit

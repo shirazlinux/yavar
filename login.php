@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-layout_header('ورود', 'ورود به بستر یاور شیرازلینوکس');
+layout_header('ورود', 'ورود به یاور');
 ?>
 <section class="page-section">
   <div class="container narrow">
@@ -116,14 +116,14 @@ layout_header('ورود', 'ورود به بستر یاور شیرازلینوک�
       <label for="password">رمز عبور</label>
       <input id="password" type="password" dir="ltr" class="ltr-field password-field" name="password" required autocomplete="current-password">
       <p class="hint" style="margin:.35rem 0 .75rem"><a href="/forgot-password.php">رمز را فراموش کرده‌اید؟</a></p>
-      <button class="btn btn-primary" type="submit">ورود</button>
+      <button class="btn btn-primary btn-block" type="submit">ورود</button>
     </form>
 
     <div class="card" style="margin-top:1rem">
       <h2 style="margin-top:0;font-size:1.1rem">حساب ندارید؟</h2>
       <p class="hint">یک حساب می‌سازید؛ در همان‌جا می‌پرسیم آیا صفحه حمایت می‌خواهید یا فعلاً فقط حامی هستید.</p>
-      <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.75rem">
-        <a class="btn btn-primary" style="width:auto" href="/register.php">ثبت‌نام (با انتخاب نقش)</a>
+      <div class="btn-toolbar" style="margin-top:.75rem">
+        <a class="btn btn-primary" href="/register.php">ثبت‌نام (با انتخاب نقش)</a>
         <a class="btn btn-ghost" href="/">بازگشت به حمایت بدون ورود</a>
       </div>
     </div>

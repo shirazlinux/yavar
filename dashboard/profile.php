@@ -249,7 +249,7 @@ $curPreset = str_starts_with($curAvatar, 'preset:') ? substr($curAvatar, 7) : ''
       <p class="hint pass-warn" id="pass-warn" hidden>کیبورد را انگلیسی کنید — رمز فارسی پذیرفته نمی‌شود.</p>
       <p class="hint">تغییر رمز بدون وارد کردن رمز فعلی ممکن نیست.</p>
 
-      <button class="btn btn-primary" type="submit">ذخیره</button>
+      <button class="btn btn-primary btn-block" type="submit">ذخیره</button>
       <p class="form-note"><a href="/dashboard/">پنل</a></p>
     </form>
   </div>
