@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * کپچای ریاضی ساده (نمایش فارسی، پاسخ عدد لاتین).
+ * کپچای ریاضی ساده (نمایش LTR با ارقام لاتین تا در RTL جابه‌جا نشود؛ پاسخ لاتین/فارسی).
  *
  * الگوی استاندارد (مثل reCAPTCHA soft / session gate):
  * - یک بار در هر نشست موفق می‌شود (TTL)
@@ -45,13 +45,17 @@ final class Captcha
         $answer = $op === 'plus' ? $a + $b : $a - $b;
         $_SESSION['captcha_answer'] = (string) $answer;
         $_SESSION['captcha_ts'] = time();
-        $opFa = $op === 'plus' ? '＋' : '−';
-        $q = self::fa($a) . ' ' . $opFa . ' ' . self::fa($b) . ' ＝ ؟';
+        // نمایش همیشه LTR با ارقام لاتین تا در صفحهٔ RTL جابه‌جا نشود
+        $opSym = $op === 'plus' ? '+' : '−';
+        $q = $a . ' ' . $opSym . ' ' . $b . ' = ?';
         $hint = $op === 'plus'
             ? 'حاصل جمع را با عدد انگلیسی بنویسید'
             : 'حاصل تفریق را با عدد انگلیسی بنویسید';
         $_SESSION['captcha_question'] = $q;
         $_SESSION['captcha_hint'] = $hint;
+        $_SESSION['captcha_a'] = $a;
+        $_SESSION['captcha_b'] = $b;
+        $_SESSION['captcha_op'] = $op;
         return ['question' => $q, 'hint' => $hint, 'a' => $a, 'b' => $b, 'op' => $op];
     }
 
@@ -78,7 +82,10 @@ final class Captcha
             $_SESSION['captcha_answer'],
             $_SESSION['captcha_ts'],
             $_SESSION['captcha_question'],
-            $_SESSION['captcha_hint']
+            $_SESSION['captcha_hint'],
+            $_SESSION['captcha_a'],
+            $_SESSION['captcha_b'],
+            $_SESSION['captcha_op']
         );
     }
 
@@ -157,19 +164,43 @@ final class Captcha
 HTML;
         }
 
-        $q = e(self::currentQuestion());
+        // ensure challenge exists
+        self::currentQuestion();
         $hint = e(self::currentHint());
         $id = e($inputId);
         $name = e($inputName);
+        $a = (int) ($_SESSION['captcha_a'] ?? 0);
+        $b = (int) ($_SESSION['captcha_b'] ?? 0);
+        $op = (string) ($_SESSION['captcha_op'] ?? 'plus');
+        $opSym = $op === 'plus' ? '+' : '−';
+        // اگر session قدیمی بدون a/b بود، از رشتهٔ question پارس نکن — regenerate
+        if ($a < 1 || $b < 1) {
+            $gen = self::generate();
+            $a = (int) $gen['a'];
+            $b = (int) $gen['b'];
+            $opSym = $gen['op'] === 'plus' ? '+' : '−';
+        }
+        $aEsc = e((string) $a);
+        $bEsc = e((string) $b);
+        $opEsc = e($opSym);
+        $aria = e($a . ' ' . $opSym . ' ' . $b . ' = ?');
         return <<<HTML
-<div class="captcha-box" role="group" aria-label="کپچای امنیتی" data-captcha-passed="0">
+<div class="captcha-box" role="group" aria-label="کپچای امنیتی" data-captcha-passed="0" dir="rtl">
   <div class="captcha-box__head">
     <span class="captcha-box__badge">کپچا</span>
     <span class="captcha-box__hint">{$hint}</span>
   </div>
-  <div class="captcha-box__challenge" aria-hidden="true">{$q}</div>
+  <div class="captcha-box__challenge" dir="ltr" lang="en" role="img" aria-label="{$aria}">
+    <span class="captcha-box__num">{$aEsc}</span>
+    <span class="captcha-box__op" aria-hidden="true">{$opEsc}</span>
+    <span class="captcha-box__num">{$bEsc}</span>
+    <span class="captcha-box__eq" aria-hidden="true">=</span>
+    <span class="captcha-box__q" aria-hidden="true">?</span>
+  </div>
   <label class="captcha-box__label" for="{$id}">پاسخ را با عدد انگلیسی بنویسید *</label>
-  <input class="captcha-box__input ltr-field" id="{$id}" name="{$name}" required inputmode="numeric" pattern="[0-9]*" autocomplete="off" dir="ltr" placeholder="مثلاً 12" data-digits-en="1">
+  <div class="captcha-box__input-wrap">
+    <input class="captcha-box__input ltr-field" id="{$id}" name="{$name}" required inputmode="numeric" pattern="[0-9]*" autocomplete="off" dir="ltr" placeholder="مثلاً 12" data-digits-en="1">
+  </div>
 </div>
 HTML;
     }

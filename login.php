@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/lib/layout.php';
+require_once __DIR__ . '/lib/Captcha.php';
+require_once __DIR__ . '/lib/RateLimit.php';
 
 if (auth_user()) {
     $u = auth_user();
@@ -12,7 +14,34 @@ if (auth_user()) {
     exit;
 }
 
-require_once __DIR__ . '/lib/RateLimit.php';
+auth_start_session();
+
+/** تعداد ورود ناموفق در این نشست */
+function login_fail_count(): int
+{
+    return max(0, (int) ($_SESSION['login_failures'] ?? 0));
+}
+
+/** از تلاش دوم به بعد کپچا لازم است */
+function login_need_captcha(): bool
+{
+    return login_fail_count() >= 1;
+}
+
+function login_note_fail(): void
+{
+    auth_start_session();
+    $_SESSION['login_failures'] = login_fail_count() + 1;
+    // کپچای قبلی (مثلاً ثبت‌نام) را باطل کن تا برای ورود دوباره حل شود
+    Captcha::clearPassed();
+    Captcha::generate();
+}
+
+function login_clear_fails(): void
+{
+    auth_start_session();
+    unset($_SESSION['login_failures']);
+}
 
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -24,6 +53,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         security_log('login_rate_limit', '');
         $errors[] = 'تلاش‌های ورود زیاد بود. چند دقیقه صبر کنید.';
     }
+
+    // بعد از ۱ بار اشتباه: کپچا اجباری
+    if (!$errors && login_need_captcha()) {
+        // isPassed از فرم‌های دیگر را قبول نکن — فقط پاسخ همین چالش
+        Captcha::clearPassed();
+        if (!Captcha::hasChallenge()) {
+            Captcha::generate();
+        }
+        if (!Captcha::verify($_POST['captcha'] ?? null, true)) {
+            security_log('login_captcha_fail', '');
+            $errors[] = 'پاسخ کپچا نادرست است. دوباره تلاش کنید.';
+            Captcha::generate();
+        }
+    }
+
     $loginId = trim((string) ($_POST['login'] ?? $_POST['email'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
     if ($loginId === '') {
@@ -64,8 +108,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $passOk = password_verify($password, $hashCheck);
         if (!$u || !$passOk) {
             security_log('login_fail', mb_substr($loginId, 0, 80));
+            login_note_fail();
             $errors[] = 'ایمیل/نام‌کاربری یا رمز عبور نادرست است.';
+            if (login_need_captcha()) {
+                $errors[] = 'برای تلاش بعدی، حل کپچا الزامی است.';
+            }
         } else {
+            login_clear_fails();
             auth_login($u);
             if (!empty($u['is_admin'])) {
                 security_log('admin_login', (string) $u['email']);
@@ -84,6 +133,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     }
+}
+
+// برای نمایش: اگر لازم است کپچا آماده باشد
+$showCaptcha = login_need_captcha();
+if ($showCaptcha && !Captcha::hasChallenge() && !Captcha::isPassed()) {
+    Captcha::generate();
 }
 
 layout_header('ورود', 'ورود به یاور');
@@ -106,16 +161,24 @@ layout_header('ورود', 'ورود به یاور');
       <div class="form-msg show error"><?php foreach ($errors as $e): ?><div><?= e($e) ?></div><?php endforeach; ?></div>
     <?php endif; ?>
 
-    <form method="post" class="card form-card">
+    <form method="post" class="card form-card" autocomplete="on">
       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
       <label for="login">ایمیل یا نام‌کاربری</label>
       <input id="login" type="text" name="login" required dir="ltr" class="ltr-field"
              value="<?= e($_POST['login'] ?? $_POST['email'] ?? '') ?>"
              autocomplete="username" placeholder="email@example.com یا my-slug">
-      <p class="hint" style="margin:.25rem 0 .75rem">نام‌کاربری همان آدرس صفحه شماست (مثلاً <span dir="ltr">abbasdp</span> در <span dir="ltr">/u/abbasdp</span>).</p>
+      <p class="hint" style="margin:.25rem 0 .75rem">نام‌کاربری همان آدرس صفحه شماست (مثلاً <span dir="ltr">ali</span> در <span dir="ltr">/u/ali</span>).</p>
       <label for="password">رمز عبور</label>
       <input id="password" type="password" dir="ltr" class="ltr-field password-field" name="password" required autocomplete="current-password">
       <p class="hint" style="margin:.35rem 0 .75rem"><a href="/forgot-password.php">رمز را فراموش کرده‌اید؟</a></p>
+
+      <?php if ($showCaptcha): ?>
+        <div style="margin:1rem 0 .75rem">
+          <p class="hint" style="margin:0 0 .5rem">به‌دلیل ورود ناموفق قبلی، حل کپچا لازم است.</p>
+          <?= Captcha::renderBox('captcha', 'login-captcha') ?>
+        </div>
+      <?php endif; ?>
+
       <button class="btn btn-primary btn-block" type="submit">ورود</button>
     </form>
 

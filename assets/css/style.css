@@ -932,7 +932,7 @@ a.social-chip:hover {
 }
 .money-input, .jalali-date { letter-spacing: 0.02em; }
 
-/* کپچا — نمایش فارسی، پاسخ لاتین */
+/* کپچا — چالش همیشه LTR (جلوگیری از جابه‌جایی در RTL) */
 .captcha-box {
   margin: 1rem 0 1.25rem;
   padding: 1rem 1.1rem 1.15rem;
@@ -968,19 +968,47 @@ a.social-chip:hover {
 }
 .captcha-box__hint { color: var(--muted); font-size: .85rem; }
 .captcha-box__challenge {
+  /* مهم: LTR isolate تا «a + b = ?» در صفحهٔ RTL وارونه نشود */
+  direction: ltr !important;
+  unicode-bidi: isolate;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
   font-size: clamp(1.6rem, 4vw, 2.1rem);
   font-weight: 900;
-  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
   text-align: center;
-  padding: .85rem 1rem;
-  margin-bottom: .85rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.85rem;
   border-radius: 12px;
   background: #0b1220;
   border: 1px dashed rgba(148,163,184,.35);
   color: #f8fafc;
   user-select: none;
 }
+.captcha-box__challenge > span {
+  display: inline-block;
+  direction: ltr;
+  unicode-bidi: isolate;
+  line-height: 1;
+}
+.captcha-box__op,
+.captcha-box__eq {
+  color: #f59e0b;
+  font-weight: 800;
+}
+.captcha-box__q {
+  color: var(--brand-2, #ff8a5c);
+}
 .captcha-box__label { display:block; margin-bottom:.35rem; font-size:.92rem; }
+.captcha-box__input-wrap {
+  display: flex;
+  justify-content: flex-start; /* در RTL = سمت راست فرم، کنار لیبل */
+}
 .captcha-box__input {
   width: 100%;
   max-width: 220px;

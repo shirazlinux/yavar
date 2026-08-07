@@ -2,17 +2,18 @@
 declare(strict_types=1);
 /**
  * ویجت embed برای سایت / وبلاگ (iframe-friendly)
- * /embed/widget.php?slug=NAME&theme=dark|light&lang=fa|en
+ * /embed/widget.php?slug=NAME&theme=dark|light|brand&lang=fa|en&compact=1
  */
 require_once dirname(__DIR__) . '/lib/Embed.php';
 require_once dirname(__DIR__) . '/lib/auth.php';
 
-// اجازه iframe از هر origin
-header('Content-Security-Policy: default-src \'self\'; style-src \'self\' \'unsafe-inline\' https://fonts.googleapis.com; font-src \'self\' https://fonts.gstatic.com data:; img-src \'self\' data: https:; frame-ancestors *');
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-ancestors *");
 header('X-Content-Type-Options: nosniff');
-header('Cache-Control: public, max-age=120');
-// حذف XFO اگر توسط PHP set شده
+header('Cache-Control: public, max-age=60');
 header_remove('X-Frame-Options');
+if (function_exists('header_remove')) {
+    @header_remove('Cross-Origin-Opener-Policy');
+}
 
 $slug = (string) ($_GET['slug'] ?? $_GET['u'] ?? '');
 $theme = (string) ($_GET['theme'] ?? 'dark');
@@ -30,21 +31,17 @@ $ok = $user !== null;
 $card = $ok ? Embed::publicCard($user) : null;
 
 $t = $lang === 'en' ? [
-    'support' => 'Support us',
-    'via' => 'via Yavar · free software · no platform fee',
+    'via' => 'Yavar · free software · no fee',
     'cta' => 'Support',
-    'raised' => 'raised',
     'supports' => 'supports',
     'missing' => 'Page not found',
-    'type' => 'Activist',
+    'toman' => 'Toman',
 ] : [
-    'support' => 'از ما حمایت کنید',
-    'via' => 'از طریق یاور · نرم‌افزار آزاد · بدون کارمزد',
+    'via' => 'یاور · نرم‌افزار آزاد · بدون کارمزد',
     'cta' => 'حمایت کنید',
-    'raised' => 'جمع حمایت',
     'supports' => 'حمایت',
     'missing' => 'صفحه یافت نشد',
-    'type' => 'فعال',
+    'toman' => 'تومان',
 ];
 
 $bg = match ($theme) {
@@ -55,8 +52,23 @@ $bg = match ($theme) {
 $fg = $theme === 'light' ? '#0f172a' : '#e8eef9';
 $muted = $theme === 'light' ? '#64748b' : '#94a3b8';
 $border = $theme === 'light' ? 'rgba(15,23,42,.12)' : 'rgba(148,163,184,.22)';
-$cardBg = $theme === 'light' ? '#fff' : 'rgba(15,23,42,.65)';
+$cardBg = $theme === 'light' ? '#ffffff' : 'rgba(15,23,42,.72)';
+$statBg = $theme === 'light' ? 'rgba(176,64,64,.08)' : 'rgba(176,64,64,.14)';
 $dir = $lang === 'fa' ? 'rtl' : 'ltr';
+$siteHost = $card
+    ? (string) preg_replace('#^https?://#i', '', rtrim((string) $card['site'], '/'))
+    : 'donate.sudoshz.ir';
+
+// بیو کوتاه‌تر تا در ویجت بریده نشود
+$bio = '';
+if ($ok && !$compact) {
+    $bio = trim((string) ($card['bio'] ?? ''));
+    if (function_exists('mb_strlen') && mb_strlen($bio) > 90) {
+        $bio = mb_substr($bio, 0, 88) . '…';
+    } elseif (strlen($bio) > 90) {
+        $bio = substr($bio, 0, 88) . '…';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?= e($lang) ?>" dir="<?= e($dir) ?>">
@@ -67,77 +79,210 @@ $dir = $lang === 'fa' ? 'rtl' : 'ltr';
   <title><?= $ok ? e($card['name']) : 'Yavar' ?></title>
   <style>
     * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      /* ارتفاع خودکار — نه 100% که محتوا را فشرده/بریده کند */
+      height: auto;
+      background: transparent;
+      color: <?= $fg ?>;
+      font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
     body {
-      margin: 0; font-family: Vazirmatn, Tahoma, system-ui, sans-serif;
-      background: transparent; color: <?= $fg ?>;
+      display: block;
+      padding: 0;
+      overflow: visible;
     }
     .box {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
       background: <?= $bg ?>;
       border: 1px solid <?= $border ?>;
       border-radius: 16px;
-      padding: <?= $compact ? '0.85rem 1rem' : '1.15rem 1.2rem' ?>;
-      box-shadow: 0 12px 40px rgba(0,0,0,.18);
-      min-height: 100%;
+      padding: <?= $compact ? '0.85rem 0.95rem' : '1rem 1.1rem' ?>;
+      box-shadow: 0 10px 32px rgba(0,0,0,.16);
+      text-align: start;
     }
-    .row { display: flex; gap: 0.85rem; align-items: <?= $compact ? 'center' : 'flex-start' ?>; }
+    /* ردیف بالا: آواتار + نام — ترتیب طبیعی RTL/LTR */
+    .head {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
     .av {
-      width: <?= $compact ? '48px' : '56px' ?>; height: <?= $compact ? '48px' : '56px' ?>;
-      border-radius: 14px; object-fit: cover; border: 1px solid <?= $border ?>;
-      background: <?= $cardBg ?>; flex-shrink: 0;
+      width: <?= $compact ? '48px' : '56px' ?>;
+      height: <?= $compact ? '48px' : '56px' ?>;
+      border-radius: 14px;
+      object-fit: cover;
+      border: 1px solid <?= $border ?>;
+      background: <?= $cardBg ?>;
+      flex-shrink: 0;
+      display: block;
     }
-    .name { font-weight: 800; font-size: <?= $compact ? '1rem' : '1.1rem' ?>; margin: 0 0 .15rem; line-height: 1.3; }
-    .meta { color: <?= $muted ?>; font-size: 0.78rem; margin: 0; }
-    .bio { color: <?= $muted ?>; font-size: 0.85rem; margin: 0.55rem 0 0; line-height: 1.45; }
+    .head-text {
+      min-width: 0;
+      flex: 1 1 auto;
+      text-align: start;
+    }
+    .name {
+      font-weight: 800;
+      font-size: <?= $compact ? '0.98rem' : '1.08rem' ?>;
+      margin: 0;
+      line-height: 1.35;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
+    .type {
+      display: inline-block;
+      margin-top: 0.25rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #e07070;
+      background: <?= $statBg ?>;
+      border: 1px solid rgba(176,64,64,.28);
+      border-radius: 999px;
+      padding: 0.12rem 0.5rem;
+      line-height: 1.4;
+    }
+    .meta {
+      color: <?= $muted ?>;
+      font-size: 0.75rem;
+      margin: 0.55rem 0 0;
+      line-height: 1.45;
+      text-align: start;
+    }
+    .bio {
+      color: <?= $muted ?>;
+      font-size: 0.82rem;
+      margin: 0.45rem 0 0;
+      line-height: 1.5;
+      text-align: start;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
     .stats {
-      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.7rem;
+      justify-content: flex-start;
+      width: 100%;
     }
     .stat {
-      background: <?= $theme === 'light' ? 'rgba(241,89,45,.08)' : 'rgba(241,89,45,.12)' ?>;
-      border: 1px solid rgba(241,89,45,.25);
-      border-radius: 10px; padding: 0.35rem 0.65rem; font-size: 0.78rem;
+      background: <?= $statBg ?>;
+      border: 1px solid rgba(176,64,64,.28);
+      border-radius: 10px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.76rem;
+      line-height: 1.35;
+      white-space: nowrap;
     }
-    .stat strong { color: #F1592D; }
+    .stat strong { color: #e07070; font-weight: 800; }
     .cta {
-      display: inline-flex; align-items: center; justify-content: center;
-      margin-top: 0.9rem; width: 100%;
-      background: linear-gradient(135deg,#F1592D,#ff7a45);
-      color: #1a0a04 !important; font-weight: 800; text-decoration: none !important;
-      border-radius: 12px; padding: 0.7rem 1rem; font-size: 0.95rem;
-      box-shadow: 0 10px 24px rgba(241,89,45,.28);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 0.8rem;
+      width: 100%;
+      background: linear-gradient(135deg,#B04040,#e07070);
+      color: #fff !important;
+      font-weight: 800;
+      text-decoration: none !important;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-size: 0.92rem;
+      box-shadow: 0 8px 20px rgba(176,64,64,.25);
+      text-align: center;
     }
-    .cta:hover { filter: brightness(1.05); }
-    .foot { margin-top: 0.65rem; font-size: 0.72rem; color: <?= $muted ?>; text-align: center; }
-    .miss { padding: 1.25rem; text-align: center; color: <?= $muted ?>; }
-    a.soft { color: <?= $muted ?>; }
+    .cta:hover { filter: brightness(1.06); }
+    .foot {
+      margin-top: 0.55rem;
+      font-size: 0.7rem;
+      color: <?= $muted ?>;
+      text-align: center;
+      width: 100%;
+      line-height: 1.3;
+    }
+    .miss {
+      padding: 1.1rem;
+      text-align: center;
+      color: <?= $muted ?>;
+      width: 100%;
+    }
+    a.soft { color: <?= $muted ?>; text-decoration: none; }
+    a.soft:hover { text-decoration: underline; }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
 <?php if (!$ok || !$card): ?>
-  <div class="box miss"><?= e($t['missing']) ?></div>
+  <div class="box miss" id="yavar-widget-root"><?= e($t['missing']) ?></div>
 <?php else: ?>
-  <div class="box">
-    <div class="row">
-      <img class="av" src="<?= e($card['avatar']) ?>" alt="" width="56" height="56" loading="lazy"
-           onerror="this.style.display='none'">
-      <div style="min-width:0;flex:1">
+  <div class="box" id="yavar-widget-root">
+    <div class="head">
+      <img class="av" src="<?= e($card['avatar']) ?>" alt="" width="56" height="56" loading="eager"
+           onerror="this.style.visibility='hidden'">
+      <div class="head-text">
         <h1 class="name"><?= e($card['name']) ?></h1>
-        <p class="meta"><?= e($card['type']) ?> · <?= e($t['via']) ?></p>
-        <?php if (!$compact && $card['bio'] !== ''): ?>
-          <p class="bio"><?= e($card['bio']) ?></p>
-        <?php endif; ?>
+        <span class="type"><?= e($card['type']) ?></span>
       </div>
     </div>
+    <p class="meta"><?= e($t['via']) ?></p>
+    <?php if ($bio !== ''): ?>
+      <p class="bio"><?= e($bio) ?></p>
+    <?php endif; ?>
     <?php if ($card['count'] > 0): ?>
       <div class="stats">
         <span class="stat"><strong><?= e(number_format($card['count'])) ?></strong> <?= e($t['supports']) ?></span>
-        <span class="stat"><strong><?= e(number_format($card['sum'])) ?></strong> <?= $lang === 'fa' ? 'تومان' : 'Toman' ?></span>
+        <span class="stat"><strong><?= e(number_format($card['sum'])) ?></strong> <?= e($t['toman']) ?></span>
       </div>
     <?php endif; ?>
     <a class="cta" href="<?= e($card['url']) ?>" target="_blank" rel="noopener noreferrer"><?= e($t['cta']) ?></a>
-    <div class="foot"><a class="soft" href="<?= e($card['site']) ?>" target="_blank" rel="noopener">yavar.sudoshz.ir</a></div>
+    <div class="foot">
+      <a class="soft" href="<?= e($card['site']) ?>" target="_blank" rel="noopener" dir="ltr"><?= e($siteHost) ?></a>
+    </div>
   </div>
 <?php endif; ?>
+<script>
+(function () {
+  function measure() {
+    var root = document.getElementById('yavar-widget-root') || document.body;
+    var h = Math.ceil(Math.max(
+      root.offsetHeight || 0,
+      root.scrollHeight || 0,
+      document.documentElement.scrollHeight || 0,
+      document.body.scrollHeight || 0
+    ));
+    // کمی فضای امن برای سایه/border
+    h = Math.max(120, h + 4);
+    try {
+      parent.postMessage({ type: 'yavar-embed-resize', height: h, source: 'yavar-widget' }, '*');
+    } catch (e) {}
+    return h;
+  }
+  function tick() {
+    measure();
+    // بعد از فونت/تصویر
+    setTimeout(measure, 120);
+    setTimeout(measure, 450);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tick);
+  } else {
+    tick();
+  }
+  window.addEventListener('load', measure);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(measure).catch(function () {});
+  }
+})();
+</script>
 </body>
 </html>

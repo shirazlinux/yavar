@@ -1,5 +1,8 @@
 # یاور (Yavar)
 
+[![Donate](https://donate.sudoshz.ir/badge.php?slug=shirazlinux&style=heart&label=donate)](https://donate.sudoshz.ir/u/shirazlinux)
+
+
 کد منبع بستر حمایت از فعالان و پروژه‌های نرم‌افزار آزاد (PHP + SQLite).
 
 **مجوز:** [GNU AGPL v3](LICENSE)  
