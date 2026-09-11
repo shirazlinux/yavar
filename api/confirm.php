@@ -61,16 +61,15 @@ if ($action === 'confirm' && $d['status'] === 'pending') {
     }
 
     if ($st->rowCount() > 0) {
-        $st = db()->prepare('SELECT display_name, phone, email FROM users WHERE id = ?');
-        $st->execute([(int) $d['user_id']]);
-        $u = $st->fetch();
+        $u = Notify::loadUser((int) $d['user_id']);
         if ($u && $ready) {
             Notify::donationPaid(
                 (string) ($u['phone'] ?? ''),
                 (string) ($u['email'] ?? ''),
                 (string) $u['display_name'],
                 (int) $d['amount'],
-                $ref
+                $ref,
+                $u
             );
         }
         // تلگرام: بعد از paid (ادعای فعال یا تأیید ادمین) — تشویق مخاطب

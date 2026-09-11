@@ -84,15 +84,8 @@ final class Gateway
             $meta['donation_id'] = (int) db()->lastInsertId();
             self::storePending($authority, $meta);
 
-            // SMS + ایمیل: حمایت جدید در صف
-            Notify::donationPending(
-                (string) ($act['phone'] ?? ''),
-                (string) ($act['email'] ?? ''),
-                (string) ($act['display_name'] ?? 'فعال'),
-                $amount,
-                $refCode,
-                $name
-            );
+            // وقتی حامی هنوز در درگاه است (pending) هیچ SMS/ایمیلی به فعال نرود.
+            // اعلان فقط بعد از پرداخت موفق، یا اعلام واریز کارت‌به‌کارت، یا تأیید فعال.
         }
 
         $descSuffix = '';
@@ -185,18 +178,17 @@ final class Gateway
             campaign_refresh_status((int) $pending['campaign_id']);
         }
 
-        // SMS + ایمیل به فعال — فقط بار اول
+        // SMS + ایمیل به فعال — فقط بار اول؛ با توجه به تنظیم notify_email / notify_sms
         if (!empty($pending['activist_id'])) {
-            $st = db()->prepare('SELECT display_name, phone, email FROM users WHERE id = ?');
-            $st->execute([(int) $pending['activist_id']]);
-            $u = $st->fetch();
+            $u = Notify::loadUser((int) $pending['activist_id']);
             if ($u) {
                 Notify::donationPaid(
                     (string) ($u['phone'] ?? ''),
                     (string) ($u['email'] ?? ''),
                     (string) $u['display_name'],
                     (int) $pending['amount'],
-                    $ref
+                    $ref,
+                    $u
                 );
             }
             // اعلان تلگرام کانال/گروه (صف → worker خارج)

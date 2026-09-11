@@ -3,6 +3,77 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/auth.php';
 
+/**
+ * منوی مشترک پنل فعال/پروژه — در همه صفحات داشبورد یکسان.
+ * @param array<string,mixed>|null $user
+ */
+function dashboard_nav(?array $user = null, ?string $active = null): void
+{
+    $user = $user ?? auth_user();
+    if (!$user) {
+        return;
+    }
+    // پنل حامی منوی جدا دارد
+    if (($user['role'] ?? 'hamyar') === 'supporter' && empty($user['is_admin'])) {
+        return;
+    }
+
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    $detect = match ($script) {
+        'index.php' => 'home',
+        'profile.php' => 'pages',
+        'pages.php' => 'pages',
+        'transparency.php' => 'transparency',
+        'campaigns.php' => 'campaigns',
+        'telegram.php' => 'telegram',
+        'widgets.php' => 'widgets',
+        default => '',
+    };
+    $active = $active ?? $detect;
+
+    $items = [
+        ['id' => 'home', 'href' => '/dashboard/', 'label' => 'پنل من'],
+        ['id' => 'pages', 'href' => '/dashboard/pages.php', 'label' => 'صفحات من'],
+        ['id' => 'transparency', 'href' => '/dashboard/transparency.php', 'label' => 'شفافیت مالی'],
+        ['id' => 'campaigns', 'href' => '/dashboard/campaigns.php', 'label' => 'حمایت‌های هدفمند'],
+        ['id' => 'telegram', 'href' => '/dashboard/telegram.php', 'label' => 'اعلان تلگرام'],
+        ['id' => 'widgets', 'href' => '/dashboard/widgets.php', 'label' => 'ابزارک و بج'],
+    ];
+
+    $publicPath = '';
+    if (($user['status'] ?? '') === 'approved' && !empty($user['slug'])) {
+        $publicPath = '/u/' . rawurlencode((string) $user['slug']);
+    }
+
+    $currentLabel = 'پنل';
+    foreach ($items as $it) {
+        if ($active === $it['id']) {
+            $currentLabel = $it['label'];
+            break;
+        }
+    }
+
+    echo '<nav class="dash-nav" aria-label="منوی پنل">';
+    // open پیش‌فرض برای دسکتاپ؛ روی موبایل nav.js جمع می‌کند
+    echo '<details class="dash-nav__details" open>';
+    echo '<summary class="dash-nav__summary">';
+    echo '<span class="dash-nav__summary-title">منوی پنل</span>';
+    echo '<span class="dash-nav__summary-current">' . e($currentLabel) . '</span>';
+    echo '<span class="dash-nav__summary-chevron" aria-hidden="true"></span>';
+    echo '</summary>';
+    echo '<div class="dash-nav__scroll">';
+    foreach ($items as $it) {
+        $isActive = $active === $it['id'];
+        $cls = 'btn btn-ghost dash-nav__link' . ($isActive ? ' is-active' : '');
+        $aria = $isActive ? ' aria-current="page"' : '';
+        echo '<a class="' . e($cls) . '" href="' . e($it['href']) . '"' . $aria . '>' . e($it['label']) . '</a>';
+    }
+    if ($publicPath !== '') {
+        echo '<a class="btn btn-primary dash-nav__link dash-nav__public" href="' . e($publicPath) . '" target="_blank" rel="noopener">صفحه عمومی</a>';
+    }
+    echo '</div></details></nav>';
+}
+
 function layout_header(string $title, string $desc = '', array $opts = []): void
 {
     $cfg = app_config();
@@ -171,7 +242,7 @@ function layout_header(string $title, string $desc = '', array $opts = []): void
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/style.css?v=23">
+  <link rel="stylesheet" href="/assets/css/style.css?v=50">
   <link rel="icon" type="image/png" sizes="32x32" href="<?= e($favicon) ?>">
   <link rel="icon" type="image/png" sizes="192x192" href="<?= e($base . '/assets/brand/icon-192.png') ?>">
   <link rel="apple-touch-icon" href="<?= e($base . '/assets/brand/apple-touch-icon.png') ?>">
@@ -225,6 +296,7 @@ function layout_header(string $title, string $desc = '', array $opts = []): void
 
 function layout_footer(): void
 {
+    require_once __DIR__ . '/Umami.php';
     $cfg = app_config();
     $site = (string) ($cfg['site_name'] ?? 'یاور');
     $tagline = (string) ($cfg['tagline'] ?? 'پلتفرم حمایت از پروژه‌ها و جوامع نرم‌افزار آزاد');
@@ -302,9 +374,10 @@ function layout_footer(): void
       </span>
     </div>
   </footer>
-  <script src="/assets/js/money.js?v=1" defer></script>
-  <script src="/assets/js/main.js?v=12" defer></script>
-  <script src="/assets/js/nav.js?v=1" defer></script>
+  <script src="/assets/js/money.js?v=2" defer></script>
+  <script src="/assets/js/main.js?v=13" defer></script>
+  <script src="/assets/js/nav.js?v=2" defer></script>
+  <?= Umami::renderScriptTag() ?>
 </body>
 </html>
 <?php

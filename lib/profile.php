@@ -27,35 +27,285 @@ function normalize_display_mode(?string $mode): string
     return in_array($mode, ['personal', 'platform', 'community'], true) ? $mode : 'personal';
 }
 
+/** نرمال‌سازی URL عمومی (گیت / وب / محل فعالیت) */
+function normalize_url_field(string $u): string
+{
+    $u = trim($u);
+    if ($u === '') {
+        return '';
+    }
+    if (!preg_match('#^https?://#i', $u)) {
+        $u = 'https://' . $u;
+    }
+    return filter_var($u, FILTER_VALIDATE_URL) ? mb_substr($u, 0, 300) : '';
+}
+
+/**
+ * فیلد لینک اجباری ثبت‌نام بر اساس نوع صفحه.
+ * @return array{store:string,label:string,hint:string,placeholder:string}
+ */
+/** توضیح کوتاه نوع صفحه برای ثبت‌نام و ساخت صفحه */
+function yavar_type_help_html(?string $selected = null): void
+{
+    $selected = $selected === 'platform' ? 'project' : (string) $selected;
+    $items = [
+        'personal' => [
+            'title' => 'فعال',
+            'who' => 'یک نفر',
+            'text' => 'صفحه با نام خودت دیده می‌شود. برای کسی که شخصاً روی نرم‌افزار آزاد کار می‌کند: توسعه، مستند، ترجمه، نگهداری، آموزش، …',
+        ],
+        'project' => [
+            'title' => 'پروژه',
+            'who' => 'یک کار مشخص',
+            'text' => 'صفحه با نام پروژه دیده می‌شود، نه نام شخصی. برای یک مخزن، ابزار یا محصول آزاد مشخص که حمایت برای همان کار است.',
+        ],
+        'community' => [
+            'title' => 'جامعه',
+            'who' => 'یک جمع',
+            'text' => 'صفحه با نام جامعه دیده می‌شود. برای گروه کاربری، انجمن، LUG، رویداد یا ویکی جمعی نرم‌افزار آزاد.',
+        ],
+    ];
+    echo '<div class="type-help" id="type-help">';
+    echo '<p class="type-help__lead">این سه تا چه فرقی دارند؟ بعداً هم می‌توانی با همین حساب صفحهٔ دیگری بسازی.</p>';
+    echo '<ul class="type-help__list">';
+    foreach ($items as $key => $it) {
+        $cls = 'type-help__item' . ($selected === $key ? ' is-current' : '');
+        echo '<li class="' . e($cls) . '" data-type="' . e($key) . '">';
+        echo '<strong>' . e($it['title']) . '</strong>';
+        echo '<span class="type-help__who">' . e($it['who']) . '</span>';
+        echo '<span>' . e($it['text']) . '</span>';
+        echo '</li>';
+    }
+    echo '</ul>';
+    echo '<p class="hint" style="margin:.65rem 0 0">در حالت پروژه یا جامعه، در صفحهٔ عمومی فقط همان نام دیده می‌شود.</p>';
+    echo '</div>';
+}
+
+function presence_link_meta(?string $mode): array
+{
+    $mode = normalize_display_mode($mode);
+    return match ($mode) {
+        'platform' => [
+            'store' => 'git_url',
+            'label' => 'لینک مخزن پروژه',
+            'hint' => 'آدرس ریپوی پروژه (گیت‌هاب، کدبرگ، گیت‌لب، …) تا حامیان قبل از حمایت بررسی کنند.',
+            'placeholder' => 'https://github.com/org/project',
+        ],
+        'community' => [
+            'store' => 'website_url',
+            'label' => 'لینک صفحه جامعه',
+            'hint' => 'وب‌سایت، ویکی، گروه یا صفحهٔ عمومی جامعه تا حامیان بتوانند آن را بررسی کنند.',
+            'placeholder' => 'https://example.org/community',
+        ],
+        default => [
+            'store' => 'website_url',
+            'label' => 'لینک محل فعالیت',
+            'hint' => 'جایی که به‌عنوان فعال نرم‌افزار آزاد شناخته می‌شوید (پروفایل گیت، وبلاگ، صفحه مشارکت‌ها، …).',
+            'placeholder' => 'https://github.com/username',
+        ],
+    };
+}
+
+const PROJECT_LINKS_MAX = 10;
+
+/** لینک‌های اضافی پروژه / فعالیت (غیر از git_url و website_url) */
+function project_links_from_user(array $u): array
+{
+    $raw = (string) ($u['project_links'] ?? '[]');
+    $data = json_decode($raw, true);
+    if (!is_array($data)) {
+        return [];
+    }
+    $out = [];
+    $seen = [];
+    foreach ($data as $item) {
+        $url = is_array($item) ? (string) ($item['url'] ?? '') : (string) $item;
+        $url = normalize_url_field($url);
+        if ($url === '') {
+            continue;
+        }
+        $key = mb_strtolower($url);
+        if (isset($seen[$key])) {
+            continue;
+        }
+        $seen[$key] = true;
+        $out[] = $url;
+        if (count($out) >= PROJECT_LINKS_MAX) {
+            break;
+        }
+    }
+    return $out;
+}
+
+function extra_project_link_icon(string $url): string
+{
+    if (preg_match('#(github\.com|codeberg\.org|gitlab\.[^/]+|gitea\.|git\.sr\.ht|bitbucket\.org)#i', $url)) {
+        return 'git';
+    }
+    return 'web';
+}
+
+function extra_project_link_label(?string $mode, int $index): string
+{
+    $n = $index + 2;
+    $fa = strtr((string) $n, ['0' => '۰', '1' => '۱', '2' => '۲', '3' => '۳', '4' => '۴', '5' => '۵', '6' => '۶', '7' => '۷', '8' => '۸', '9' => '۹']);
+    return match (normalize_display_mode($mode)) {
+        'platform' => 'پروژه ' . $fa,
+        'community' => 'صفحه ' . $fa,
+        default => 'لینک ' . $fa,
+    };
+}
+
+function project_links_validate_post(array $post): ?string
+{
+    $raw = $post['project_links'] ?? [];
+    if (!is_array($raw)) {
+        return 'لینک‌های اضافی نامعتبر است.';
+    }
+    $n = 0;
+    foreach ($raw as $item) {
+        $t = trim((string) $item);
+        if ($t === '') {
+            continue;
+        }
+        if (normalize_url_field($t) === '') {
+            return 'یکی از لینک‌های اضافی پروژه معتبر نیست.';
+        }
+        $n++;
+        if ($n > PROJECT_LINKS_MAX) {
+            return 'حداکثر ۱۰ لینک اضافی می‌توانید اضافه کنید.';
+        }
+    }
+    return null;
+}
+
+/** @return list<string> مقادیر خام (برای نمایش مجدد فرم) */
+function project_links_posted(array $post): array
+{
+    $raw = $post['project_links'] ?? [];
+    if (!is_array($raw)) {
+        return [];
+    }
+    $out = [];
+    foreach ($raw as $item) {
+        $t = trim((string) $item);
+        if ($t !== '') {
+            $out[] = mb_substr($t, 0, 300);
+        }
+        if (count($out) >= PROJECT_LINKS_MAX) {
+            break;
+        }
+    }
+    return $out;
+}
+
+function project_links_normalize_from_post(array $post, string $primaryGit = '', string $primaryWeb = ''): string
+{
+    $raw = $post['project_links'] ?? [];
+    if (!is_array($raw)) {
+        $raw = [];
+    }
+    $primaries = [];
+    foreach ([$primaryGit, $primaryWeb] as $p) {
+        $p = mb_strtolower(rtrim(trim($p), '/'));
+        if ($p !== '') {
+            $primaries[$p] = true;
+        }
+    }
+    $out = [];
+    $seen = [];
+    foreach ($raw as $item) {
+        $url = normalize_url_field((string) $item);
+        if ($url === '') {
+            continue;
+        }
+        $key = mb_strtolower(rtrim($url, '/'));
+        if (isset($seen[$key]) || isset($primaries[$key])) {
+            continue;
+        }
+        $seen[$key] = true;
+        $out[] = $url;
+        if (count($out) >= PROJECT_LINKS_MAX) {
+            break;
+        }
+    }
+    return json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+/** لینک اصلی برای بررسی قبل از حمایت */
+function member_primary_presence_link(array $u): ?array
+{
+    $mode = normalize_display_mode($u['display_mode'] ?? 'personal');
+    $meta = presence_link_meta($mode);
+    $git = trim((string) ($u['git_url'] ?? ''));
+    $web = trim((string) ($u['website_url'] ?? ''));
+    $url = '';
+    $label = $meta['label'];
+    if ($mode === 'platform') {
+        $url = $git !== '' ? $git : $web;
+        $label = 'مخزن پروژه';
+    } elseif ($mode === 'community') {
+        $url = $web !== '' ? $web : $git;
+        $label = 'صفحه جامعه';
+    } else {
+        $url = $web !== '' ? $web : $git;
+        $label = 'محل فعالیت';
+    }
+    if ($url === '') {
+        return null;
+    }
+    return [
+        'label' => $label,
+        'url' => $url,
+        'text' => preg_replace('#^https?://#i', '', $url) ?? $url,
+    ];
+}
+
+
+/** نسخهٔ فایل برای شکستن کش مرورگر روی آواتارهای استاتیک */
+function avatar_asset_url(string $relPath): string
+{
+    $relPath = '/' . ltrim($relPath, '/');
+    $abs = dirname(__DIR__) . $relPath;
+    $v = is_file($abs) ? (string) filemtime($abs) : '1';
+    return $relPath . '?v=' . $v;
+}
+
 function member_avatar_url(array $u): string
 {
     $a = trim((string) ($u['avatar'] ?? ''));
     if ($a === '') {
-        return '/assets/avatars/tux.svg';
+        return is_file(dirname(__DIR__) . '/assets/avatars/tux.png') ? avatar_asset_url('/assets/avatars/tux.png') : avatar_asset_url('/assets/avatars/tux.svg');
     }
     if (str_starts_with($a, 'preset:')) {
         $key = preg_replace('/[^a-z0-9_\-]/', '', substr($a, 7)) ?: 'tux';
-        return '/assets/avatars/' . $key . '.svg';
+        $dir = dirname(__DIR__) . '/assets/avatars';
+        // PNG اول (نسخهٔ استاندارد کاربر)، بعد SVG
+        if (is_file($dir . '/' . $key . '.png')) {
+            return avatar_asset_url('/assets/avatars/' . $key . '.png');
+        }
+        if (is_file($dir . '/' . $key . '.svg')) {
+            return avatar_asset_url('/assets/avatars/' . $key . '.svg');
+        }
+        return is_file(dirname(__DIR__) . '/assets/avatars/tux.png') ? avatar_asset_url('/assets/avatars/tux.png') : avatar_asset_url('/assets/avatars/tux.svg');
     }
     if (str_starts_with($a, 'upload:')) {
         $file = basename(substr($a, 7));
         return '/assets/uploads/' . $file;
     }
-    return '/assets/avatars/tux.svg';
+    return is_file(dirname(__DIR__) . '/assets/avatars/tux.png') ? avatar_asset_url('/assets/avatars/tux.png') : avatar_asset_url('/assets/avatars/tux.svg');
 }
 
 /** @return list<array{id:string,label:string,url:string}> */
 function avatar_presets(): array
 {
     return [
-        ['id' => 'tux', 'label' => 'تاکس (لینوکس)', 'url' => '/assets/avatars/tux.svg'],
-        ['id' => 'gnu', 'label' => 'گنو', 'url' => '/assets/avatars/gnu.svg'],
-        ['id' => 'terminal', 'label' => 'ترمینال', 'url' => '/assets/avatars/terminal.svg'],
-        ['id' => 'share', 'label' => 'اشتراک‌گذاری', 'url' => '/assets/avatars/share.svg'],
-        ['id' => 'code', 'label' => 'کد آزاد', 'url' => '/assets/avatars/code.svg'],
-        ['id' => 'freedom', 'label' => 'آزادی', 'url' => '/assets/avatars/freedom.svg'],
-        ['id' => 'hex', 'label' => 'FS', 'url' => '/assets/avatars/hex.svg'],
-        ['id' => 'circle', 'label' => 'دایره', 'url' => '/assets/avatars/circle.svg'],
+        ['id' => 'tux', 'label' => 'لینوکس تاکس', 'url' => avatar_asset_url('/assets/avatars/tux.png')],
+        ['id' => 'gnu-linux', 'label' => 'گنو/لینوکس', 'url' => avatar_asset_url('/assets/avatars/gnu-linux.png')],
+        ['id' => 'freedo', 'label' => 'لیبره گنو/لینوکس (Freedo)', 'url' => avatar_asset_url('/assets/avatars/freedo.png')],
+        ['id' => 'fsf', 'label' => 'بنیاد نرم‌افزار آزاد', 'url' => avatar_asset_url('/assets/avatars/fsf.png')],
+        ['id' => 'persepolis', 'label' => 'پرسپولیس — دانلود منیجر', 'url' => avatar_asset_url('/assets/avatars/persepolis.png')],
+        ['id' => 'arch', 'label' => 'آرچ لینوکس', 'url' => avatar_asset_url('/assets/avatars/arch.png')],
     ];
 }
 
@@ -101,11 +351,39 @@ function member_link_items(array $u): array
     $git = trim((string) ($u['git_url'] ?? ''));
     $web = trim((string) ($u['website_url'] ?? ''));
     $contact = trim((string) ($u['public_contact'] ?? ''));
+    $mode = normalize_display_mode($u['display_mode'] ?? 'personal');
     if ($git !== '') {
-        $items[] = ['key' => 'git', 'label' => 'مخزن', 'url' => $git, 'text' => preg_replace('#^https?://#', '', $git)];
+        $gitLabel = $mode === 'platform' ? 'مخزن پروژه' : 'مخزن';
+        $items[] = ['key' => 'git', 'label' => $gitLabel, 'url' => $git, 'text' => preg_replace('#^https?://#', '', $git)];
     }
     if ($web !== '') {
-        $items[] = ['key' => 'web', 'label' => 'وب', 'url' => $web, 'text' => preg_replace('#^https?://#', '', $web)];
+        $webLabel = match ($mode) {
+            'community' => 'صفحه جامعه',
+            'personal' => 'محل فعالیت',
+            default => 'وب',
+        };
+        $items[] = ['key' => 'web', 'label' => $webLabel, 'url' => $web, 'text' => preg_replace('#^https?://#', '', $web)];
+    }
+    $primaryKeys = [];
+    if ($git !== '') {
+        $primaryKeys[mb_strtolower(rtrim($git, '/'))] = true;
+    }
+    if ($web !== '') {
+        $primaryKeys[mb_strtolower(rtrim($web, '/'))] = true;
+    }
+    $extraI = 0;
+    foreach (project_links_from_user($u) as $extraUrl) {
+        $ek = mb_strtolower(rtrim($extraUrl, '/'));
+        if (isset($primaryKeys[$ek])) {
+            continue;
+        }
+        $items[] = [
+            'key' => extra_project_link_icon($extraUrl),
+            'label' => extra_project_link_label($mode, $extraI),
+            'url' => $extraUrl,
+            'text' => preg_replace('#^https?://#', '', $extraUrl),
+        ];
+        $extraI++;
     }
     $defs = social_network_defs();
     foreach (social_links_from_user($u) as $k => $url) {

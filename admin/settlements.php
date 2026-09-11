@@ -25,17 +25,21 @@ function settlement_mark(array $ids, string $status, string $note = ''): int
         }
         if ($st->rowCount() > 0) {
             $n++;
-            $q = db()->prepare('SELECT d.amount, u.display_name, u.phone, u.email FROM donations d JOIN users u ON u.id=d.user_id WHERE d.id=?');
+            $q = db()->prepare('SELECT d.amount, d.user_id FROM donations d WHERE d.id=?');
             $q->execute([$id]);
             $row = $q->fetch();
             if ($row) {
-                Notify::settlement(
-                    (string) ($row['phone'] ?? ''),
-                    (string) ($row['email'] ?? ''),
-                    (string) $row['display_name'],
-                    (int) $row['amount'],
-                    $status === 'refunded' ? 'refunded' : 'settled'
-                );
+                $u = Notify::loadUser((int) $row['user_id']);
+                if ($u) {
+                    Notify::settlement(
+                        (string) ($u['phone'] ?? ''),
+                        (string) ($u['email'] ?? ''),
+                        (string) $u['display_name'],
+                        (int) $row['amount'],
+                        $status === 'refunded' ? 'refunded' : 'settled',
+                        $u
+                    );
+                }
             }
         }
     }
@@ -66,17 +70,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_verify($_POST['csrf'] ?? null)
                 $flash = $st->rowCount() > 0 ? 'ادعا تأیید و آمادهٔ تسویه شد.' : 'موردی به‌روز نشد.';
                 if ($st->rowCount() > 0) {
                     security_log('admin_approve_claim', 'id=' . $id);
-                    $q = db()->prepare('SELECT d.amount, u.display_name, u.phone, u.email, d.ref_id FROM donations d JOIN users u ON u.id=d.user_id WHERE d.id=?');
+                    $q = db()->prepare('SELECT d.amount, d.ref_id, d.user_id FROM donations d WHERE d.id=?');
                     $q->execute([$id]);
                     $row = $q->fetch();
                     if ($row) {
-                        Notify::donationPaid(
-                            (string) ($row['phone'] ?? ''),
-                            (string) ($row['email'] ?? ''),
-                            (string) $row['display_name'],
-                            (int) $row['amount'],
-                            (string) ($row['ref_id'] ?? '')
-                        );
+                        $u = Notify::loadUser((int) $row['user_id']);
+                        if ($u) {
+                            Notify::donationPaid(
+                                (string) ($u['phone'] ?? ''),
+                                (string) ($u['email'] ?? ''),
+                                (string) $u['display_name'],
+                                (int) $row['amount'],
+                                (string) ($row['ref_id'] ?? ''),
+                                $u
+                            );
+                        }
                     }
                 }
             } else {

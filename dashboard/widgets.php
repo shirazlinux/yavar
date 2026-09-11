@@ -63,13 +63,13 @@ $approved = ($user['status'] ?? '') === 'approved';
 layout_header('ابزارک‌ها و بج', 'Embed برای سایت و GitHub');
 ?>
 <section class="page-section">
-  <div class="container narrow">
+  <div class="container dash-page">
     <h1 class="page-title">ابزارک‌ها و بج</h1>
+    <?php dashboard_nav($user, 'widgets'); ?>
     <p class="page-lead">
       کد آماده برای <strong>گیت‌هاب / گیت‌لب / کدبرگ</strong> و برای <strong>سایت شخصی</strong>.
       لینک صفحه شما: <a href="<?= e($pageUrl) ?>" dir="ltr" target="_blank" rel="noopener"><?= e($pageUrl) ?></a>
     </p>
-    <p class="hint"><a href="/dashboard/">← پنل</a></p>
 
     <?php if (!$approved): ?>
       <div class="form-msg show manual">پس از تأیید حساب، بج و ویجت برای عموم فعال می‌شوند. کدها از الان قابل کپی‌اند.</div>

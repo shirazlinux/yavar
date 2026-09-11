@@ -6,13 +6,6 @@ $user = auth_require_login();
 $errors = [];
 $saved = false;
 
-function normalize_url_field(string $u): string
-{
-    $u = trim($u);
-    if ($u === '') return '';
-    if (!preg_match('#^https?://#i', $u)) $u = 'https://' . $u;
-    return filter_var($u, FILTER_VALIDATE_URL) ? mb_substr($u, 0, 300) : '';
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_verify($_POST['csrf'] ?? null)) {
@@ -30,6 +23,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $publicContact = trim((string) ($_POST['public_contact'] ?? ''));
     $socialJson = social_links_normalize($_POST);
     $showPublicDons = !empty($_POST['show_public_donations']) ? 1 : 0;
+    $showPageViews = !empty($_POST['show_page_views']) ? 1 : 0;
+    $showTransparency = !empty($_POST['show_transparency']) ? 1 : 0;
+    $transparencyNote = trim((string) ($_POST['transparency_note'] ?? ''));
+    if (mb_strlen($transparencyNote) > 500) {
+        $errors[] = 'یادداشت شفافیت مالی حداکثر ۵۰۰ نویسه.';
+    }
+    $notifyEmail = !empty($_POST['notify_email']) ? 1 : 0;
+    $notifySms = !empty($_POST['notify_sms']) ? 1 : 0;
+    $pubLimit = (int) ($_POST['public_donations_limit'] ?? 10);
+    if (!in_array($pubLimit, [5, 10, 20, 50], true)) { $pubLimit = 10; }
+    $pubSort = (string) ($_POST['public_donations_sort'] ?? 'newest');
+    if (!in_array($pubSort, ['newest', 'highest', 'featured'], true)) { $pubSort = 'newest'; }
+
     $sheba = normalize_sheba((string) ($_POST['sheba'] ?? ''));
     $card = normalize_card((string) ($_POST['card_number'] ?? ''));
     $phone = Sms::normalizeMobile((string) ($_POST['phone'] ?? ''));
@@ -40,6 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (mb_strlen($display) < 2) $errors[] = 'نام نمایشی نامعتبر است.';
     if (($displayMode === 'platform' || $displayMode === 'community') && mb_strlen($platformName) < 2) {
         $errors[] = $displayMode === 'community' ? 'نام جامعه را وارد کنید.' : 'نام پروژه را وارد کنید.';
+    }
+    $presenceMeta = presence_link_meta($displayMode);
+    $primaryPresence = $presenceMeta['store'] === 'git_url' ? $gitUrl : $websiteUrl;
+    if ($primaryPresence === '') {
+        $errors[] = $presenceMeta['label'] . ' را وارد کنید تا حامیان بتوانند قبل از حمایت بررسی کنند.';
     }
     if (mb_strlen($activity) < 20) $errors[] = 'توضیح فعالیت حداقل ۲۰ کاراکتر.';
     if (mb_strlen($services) < 10) $errors[] = 'کارهایی که حمایت می‌پذیرید را بنویسید.';
@@ -141,11 +152,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $now = gmdate('c');
         if ($pass !== '') {
             $hash = password_hash($pass, PASSWORD_DEFAULT);
-            $st = db()->prepare('UPDATE users SET display_name=?, display_mode=?, platform_name=?, slug=?, bio=?, activity=?, services=?, git_url=?, website_url=?, public_contact=?, social_json=?, show_public_donations=?, card_number=?, sheba=?, phone=?, password_hash=?, avatar=?, updated_at=? WHERE id=?');
-            $st->execute([$display, $displayMode, $platformName, $slug, $bio, $activity, $services, $gitUrl, $websiteUrl, $publicContact, $socialJson, $showPublicDons, $card, $sheba, $phone, $hash, $avatar, $now, $user['id']]);
+            $st = db()->prepare('UPDATE users SET display_name=?, display_mode=?, platform_name=?, slug=?, bio=?, activity=?, services=?, git_url=?, website_url=?, public_contact=?, social_json=?, show_public_donations=?, show_page_views=?, public_donations_limit=?, public_donations_sort=?, show_transparency=?, transparency_note=?, notify_email=?, notify_sms=?, card_number=?, sheba=?, phone=?, password_hash=?, avatar=?, updated_at=? WHERE id=?');
+            $st->execute([$display, $displayMode, $platformName, $slug, $bio, $activity, $services, $gitUrl, $websiteUrl, $publicContact, $socialJson, $showPublicDons, $showPageViews, $pubLimit, $pubSort, $showTransparency, $transparencyNote, $notifyEmail, $notifySms, $card, $sheba, $phone, $hash, $avatar, $now, $user['id']]);
         } else {
-            $st = db()->prepare('UPDATE users SET display_name=?, display_mode=?, platform_name=?, slug=?, bio=?, activity=?, services=?, git_url=?, website_url=?, public_contact=?, social_json=?, show_public_donations=?, card_number=?, sheba=?, phone=?, avatar=?, updated_at=? WHERE id=?');
-            $st->execute([$display, $displayMode, $platformName, $slug, $bio, $activity, $services, $gitUrl, $websiteUrl, $publicContact, $socialJson, $showPublicDons, $card, $sheba, $phone, $avatar, $now, $user['id']]);
+            $st = db()->prepare('UPDATE users SET display_name=?, display_mode=?, platform_name=?, slug=?, bio=?, activity=?, services=?, git_url=?, website_url=?, public_contact=?, social_json=?, show_public_donations=?, show_page_views=?, public_donations_limit=?, public_donations_sort=?, show_transparency=?, transparency_note=?, notify_email=?, notify_sms=?, card_number=?, sheba=?, phone=?, avatar=?, updated_at=? WHERE id=?');
+            $st->execute([$display, $displayMode, $platformName, $slug, $bio, $activity, $services, $gitUrl, $websiteUrl, $publicContact, $socialJson, $showPublicDons, $showPageViews, $pubLimit, $pubSort, $showTransparency, $transparencyNote, $notifyEmail, $notifySms, $card, $sheba, $phone, $avatar, $now, $user['id']]);
         }
         $saved = true;
         $st = db()->prepare('SELECT * FROM users WHERE id=?');
@@ -160,8 +171,9 @@ $curAvatar = (string) ($user['avatar'] ?? 'preset:tux');
 $curPreset = str_starts_with($curAvatar, 'preset:') ? substr($curAvatar, 7) : '';
 ?>
 <section class="page-section">
-  <div class="container narrow">
+  <div class="container dash-page">
     <h1 class="page-title">صفحه حمایت من</h1>
+    <?php dashboard_nav($user, 'profile'); ?>
     <?php if ($saved): ?><div class="form-msg show ok">ذخیره شد.</div><?php endif; ?>
     <?php if ($errors): ?><div class="form-msg show error"><?php foreach ($errors as $e): ?><div><?= e($e) ?></div><?php endforeach; ?></div><?php endif; ?>
 
@@ -176,10 +188,11 @@ $curPreset = str_starts_with($curAvatar, 'preset:') ? substr($curAvatar, 7) : ''
       </div>
 
       <h3 class="form-subhead" style="margin-top:0">نام نمایشی برای حمایت</h3>
-      <label class="check-line"><input type="radio" name="display_mode" value="personal" <?= (($user['display_mode'] ?? 'personal') === 'personal') ? 'checked' : '' ?>> فعال (با نام خودم)</label>
+      <label class="check-line"><input type="radio" name="display_mode" value="personal" <?= (($user['display_mode'] ?? 'personal') === 'personal') ? 'checked' : '' ?>> فعال (حمایت با نام خودم)</label>
       <label class="check-line"><input type="radio" name="display_mode" value="platform" <?= (($user['display_mode'] ?? '') === 'platform') ? 'checked' : '' ?>> پروژه</label>
       <label class="check-line"><input type="radio" name="display_mode" value="community" <?= (($user['display_mode'] ?? '') === 'community') ? 'checked' : '' ?>> جامعه</label>
-      <label>نام شخصی *</label>
+      <p class="hint">در حالت <strong>پروژه</strong> یا <strong>جامعه</strong> فقط نام پروژه/جامعه در صفحه عمومی دیده می‌شود و نام شخصی زیر آن نشان داده نمی‌شود (مگر حالت «فعال»).</p>
+      <label>نام شخصی (برای حساب) *</label>
       <input name="display_name" required value="<?= e($user['display_name']) ?>">
       <label>نام پروژه / جامعه</label>
       <input name="platform_name" value="<?= e($user['platform_name'] ?? '') ?>" placeholder="برای حالت پروژه یا جامعه">
@@ -206,10 +219,12 @@ $curPreset = str_starts_with($curAvatar, 'preset:') ? substr($curAvatar, 7) : ''
       <textarea name="activity" rows="3" required><?= e($user['activity'] ?? '') ?></textarea>
       <label>کارهایی که حمایت می‌پذیرید *</label>
       <textarea name="services" rows="3" required><?= e($user['services'] ?? '') ?></textarea>
-      <label>مخزن کد (گیت‌هاب/کدبرگ/…)</label>
-      <input name="git_url" dir="ltr" class="ltr-field" value="<?= e($user['git_url'] ?? '') ?>">
-      <label>وب‌سایت</label>
-      <input name="website_url" dir="ltr" class="ltr-field" value="<?= e($user['website_url'] ?? '') ?>">
+      <label>مخزن کد / ریپو پروژه (گیت‌هاب/کدبرگ/…)</label>
+      <input name="git_url" dir="ltr" class="ltr-field" value="<?= e($user['git_url'] ?? '') ?>" placeholder="https://github.com/…">
+      <p class="hint">برای حالت «پروژه» این لینک به‌عنوان مرجع اصلی بررسی حامیان استفاده می‌شود.</p>
+      <label>وب‌سایت / محل فعالیت / صفحه جامعه</label>
+      <input name="website_url" dir="ltr" class="ltr-field" value="<?= e($user['website_url'] ?? '') ?>" placeholder="https://…">
+      <p class="hint">برای حالت «فعال» یا «جامعه» این لینک در بخش «بررسی قبل از حمایت» صفحهٔ عمومی نشان داده می‌شود.</p>
       <label>تماس عمومی (اختیاری)</label>
       <input name="public_contact" value="<?= e($user['public_contact'] ?? '') ?>">
 
@@ -219,6 +234,56 @@ $curPreset = str_starts_with($curAvatar, 'preset:') ? substr($curAvatar, 7) : ''
         فهرست حمایت‌های دریافتی (با نام/پیام حامی، در صورت اجازهٔ خودش) در صفحهٔ عمومی من نمایش داده شود
       </label>
       <p class="hint">اگر خاموش باشد، حتی حمایت‌هایی که حامی اجازه داده هم در صفحهٔ عمومی دیده نمی‌شوند. نام واقعی فقط برای شما در پنل قابل‌مشاهده است.</p>
+
+      <div id="public-dons-settings" style="margin-top:.85rem;padding:.85rem 1rem;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.02)">
+        <label for="public_donations_limit">حداکثر تعداد پیام حمایت در صفحه عمومی</label>
+        <select id="public_donations_limit" name="public_donations_limit">
+          <?php $lim = (int) ($user['public_donations_limit'] ?? 10); if ($lim < 1) $lim = 10; ?>
+          <?php foreach ([5,10,20,50] as $n): ?>
+            <option value="<?= $n ?>" <?= $lim === $n ? 'selected' : '' ?>><?= e(fa_digits((string)$n)) ?> مورد</option>
+          <?php endforeach; ?>
+        </select>
+        <label for="public_donations_sort" style="margin-top:.65rem">حالت نمایش در صفحه عمومی</label>
+        <select id="public_donations_sort" name="public_donations_sort">
+          <?php $ps = (string) ($user['public_donations_sort'] ?? 'newest'); ?>
+          <option value="newest" <?= $ps==='newest'?'selected':'' ?>>تازه‌ترین حمایت‌ها</option>
+          <option value="highest" <?= $ps==='highest'?'selected':'' ?>>بیشترین مبلغ</option>
+          <option value="featured" <?= $ps==='featured'?'selected':'' ?>>اول نظرات برتر، بعد تازه‌ترین</option>
+        </select>
+        <p class="hint" style="margin:.5rem 0 0">
+          بازدیدکننده فیلتری نمی‌بیند؛ فقط همین تنظیم شما اعمال می‌شود.
+          برای انتخاب نظرات برتر: <a href="/dashboard/#dons">پنل من → حمایت‌های دریافتی</a> روی هر حمایت عمومی دکمهٔ
+          <strong>☆ انتخاب به‌عنوان برتر</strong> را بزنید.
+        </p>
+      </div>
+
+      <h3 class="form-subhead" id="transparency">شفافیت مالی (عمومی، اختیاری)</h3>
+      <label class="check-line">
+        <input type="checkbox" name="show_transparency" value="1" <?= !empty($user['show_transparency']) ? 'checked' : '' ?>>
+        پنل شفافیت مالی (جدول هزینه‌ها و باقی‌مانده) در صفحهٔ عمومی من نمایش داده شود
+      </label>
+      <label for="transparency_note">یادداشت کوتاه بالای جدول (اختیاری)</label>
+      <textarea id="transparency_note" name="transparency_note" rows="2" maxlength="500"><?= e((string) ($user['transparency_note'] ?? '')) ?></textarea>
+      <p class="hint">
+        موارد هزینه را از
+        <a href="/dashboard/transparency.php">پنل → شفافیت مالی</a>
+        اضافه/ویرایش کنید. ارقام هزینه اظهار شماست؛ یاور صحت آن‌ها را تضمین نمی‌کند.
+      </p>
+
+      <h3 class="form-subhead">آمار بازدید صفحه</h3>
+      <label class="check-line">
+        <input type="checkbox" name="show_page_views" value="1" <?= (!array_key_exists('show_page_views', $user) || !empty($user['show_page_views'])) ? 'checked' : '' ?>>
+        نمایش تعداد بازدید صفحهٔ حمایت من برای عموم
+      </label>
+      <p class="hint">
+        آمار با Umami جمع می‌شود؛ روی صفحهٔ عمومی فقط «تعداد بازدید» نشان داده می‌شود.
+        بازدیدهای خودتان و ربات‌ها شمرده نمی‌شوند.
+        <?php
+          require_once dirname(__DIR__) . '/lib/Umami.php';
+          $pv = Umami::getPageViews((int) $user['id']);
+        ?>
+        <br>بازدید ثبت‌شده تا الان: <strong><?= e(Umami::formatViews($pv)) ?></strong>
+      </p>
 
       <h3 class="form-subhead">شبکه‌های اجتماعی (عمومی، اختیاری)</h3>
       <p class="hint">لینک پروفایل‌های آزاد و رایج — در صفحه عمومی نمایش داده می‌شود.</p>
@@ -233,7 +298,16 @@ $curPreset = str_starts_with($curAvatar, 'preset:') ? substr($curAvatar, 7) : ''
       <?php endforeach; ?>
 
       <h3 class="form-subhead">اطلاع‌رسانی (محرمانه)</h3>
-      <p class="hint">موبایل فقط برای اطلاع‌رسانی حمایت است و عمومی نمی‌شود.</p>
+      <p class="hint">موبایل و ایمیل فقط برای اطلاع‌رسانی حمایت است و عمومی نمی‌شود. وقتی حامی هنوز در درگاه پرداخت است، اعلانی ارسال نمی‌شود.</p>
+      <label class="check-line">
+        <input type="checkbox" name="notify_email" value="1" <?= (!array_key_exists('notify_email', $user) || !empty($user['notify_email'])) ? 'checked' : '' ?>>
+        دریافت اعلان ایمیل برای حمایت‌های جدید / اعلام واریز
+      </label>
+      <label class="check-line">
+        <input type="checkbox" name="notify_sms" value="1" <?= (!array_key_exists('notify_sms', $user) || !empty($user['notify_sms'])) ? 'checked' : '' ?>>
+        دریافت اعلان پیامک برای حمایت‌های تأییدشده / اعلام واریز
+      </label>
+      <p class="hint">اعلان تلگرام (اگر وصل باشد) جداگانه از این گزینه‌هاست و از بخش تلگرام پنل کنترل می‌شود.</p>
       <label>موبایل *</label>
       <input name="phone" dir="ltr" class="ltr-field" required value="<?= e($user['phone'] ?? '') ?>">
       <h3 class="form-subhead" id="settlement">تسویه (اختیاری، محرمانه)</h3>

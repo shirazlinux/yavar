@@ -48,3 +48,6 @@ Thumbs.db
 /php.ini
 /.user.ini
 /payping_oauth.json
+
+/.codegraph/
+/router.php

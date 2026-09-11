@@ -36,25 +36,39 @@ $settleLabel = [
     'refunded' => 'بازگشت داده شد',
 ];
 
+
+
+// سنجاق نظر برتر
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_verify($_POST['csrf'] ?? null)) {
+    $act = (string) ($_POST['action'] ?? '');
+    if ($act === 'toggle_featured') {
+        $did = (int) ($_POST['donation_id'] ?? 0);
+        if ($did > 0) {
+            $st = db()->prepare("SELECT id, is_public_post, status, COALESCE(is_featured,0) AS is_featured FROM donations WHERE id=? AND user_id=?");
+            $st->execute([$did, (int) $user['id']]);
+            $row = $st->fetch();
+            if ($row && ($row['status'] ?? '') === 'paid' && !empty($row['is_public_post'])) {
+                $new = empty($row['is_featured']) ? 1 : 0;
+                db()->prepare('UPDATE donations SET is_featured=? WHERE id=? AND user_id=?')->execute([$new, $did, (int) $user['id']]);
+            }
+        }
+        header('Location: /dashboard/?ok=1#dons');
+        exit;
+    }
+}
+
+
 layout_header('پنل من');
 ?>
 <section class="page-section">
-  <div class="container">
+  <div class="container dash-page">
     <div class="dash-head">
       <div>
         <h1 class="page-title">سلام، <?= e($user['display_name']) ?></h1>
         <p class="page-lead">وضعیت حساب: <span class="badge badge-<?= e($sm[1]) ?>"><?= e($sm[0]) ?></span></p>
       </div>
-      <div class="dash-actions">
-        <a class="btn btn-ghost" href="/dashboard/profile.php">ویرایش صفحه</a>
-        <a class="btn btn-ghost" href="/dashboard/campaigns.php">حمایت‌های هدفمند</a>
-        <a class="btn btn-ghost" href="/dashboard/telegram.php">اعلان تلگرام</a>
-        <a class="btn btn-ghost" href="/dashboard/widgets.php">ابزارک و بج</a>
-        <?php if ($user['status'] === 'approved'): ?>
-          <a class="btn btn-primary" href="<?= e($publicPath) ?>" target="_blank" rel="noopener">صفحه عمومی</a>
-        <?php endif; ?>
-      </div>
     </div>
+    <?php dashboard_nav($user, 'home'); ?>
 
     <?php if ($user['status'] === 'pending'): ?>
       <div class="form-msg show manual">حساب در صف بررسی است. فقط فعالیت نرم‌افزار آزاد تأیید می‌شود.</div>
@@ -103,9 +117,15 @@ layout_header('پنل من');
       <div class="form-msg show ok" style="margin-top:1rem">ثبت شد.</div>
     <?php endif; ?>
 
-    <div class="card" style="margin-top:1.25rem">
+    <div class="card" style="margin-top:1.25rem" id="dons">
       <h2 style="margin-top:0">حمایت‌های دریافتی</h2>
       <p class="hint">برای واریز کارت‌به‌کارت: پس از دیدن مبلغ در حساب‌تان، «تأیید دریافت» بزنید. مدیریت بعداً تسویه/ثبت نهایی می‌کند. حمایت‌های درگاهی پس از تأیید خودکار درگاه paid می‌شوند.</p>
+      <div class="form-msg show manual" style="margin:.85rem 0 1rem">
+        <strong>نظرات برتر برای صفحه عمومی:</strong>
+        روی حمایت‌های <em>پرداخت‌شده</em> که عمومی‌اند، دکمهٔ <strong>☆ انتخاب به‌عنوان برتر</strong> را بزنید.
+        وقتی انتخاب شد، به <strong>★ نظر برتر</strong> تبدیل می‌شود.
+        اگر در <a href="/dashboard/profile.php#public-dons-settings">ویرایش صفحه</a> حالت نمایش را «اول نظرات برتر» بگذارید، همان‌ها بالای فهرست عمومی می‌آیند.
+      </div>
       <?php if (!$dons): ?>
         <p class="hint">هنوز حمایتی دریافت نشده.</p>
       <?php else: ?>
@@ -123,11 +143,23 @@ layout_header('پنل من');
                     <br><small class="hint"><?= e(mb_substr((string)$d['message'], 0, 120)) ?></small>
                   <?php endif; ?>
                 </td>
-                <td><?= e($stLabel[$d['status']] ?? $d['status']) ?></td>
-                <td><?= e($settleLabel[$d['settlement_status'] ?? 'none'] ?? ($d['settlement_status'] ?? '—')) ?></td>
-                <td dir="ltr"><code><?= e($d['ref_id'] ?: '—') ?></code></td>
                 <td>
-                  <?php if (($d['status'] ?? '') === 'pending' && (($d['gateway'] ?? '') === 'bank' || ($d['gateway'] ?? '') === 'manual')): ?>
+                  <?php if (!empty($d['is_external'])): ?>
+                    <span class="badge badge-ext" title="پرداخت از طریق یاور ثبت نشده">حمایت خارجی</span>
+                  <?php else: ?>
+                    <?= e($stLabel[$d['status']] ?? $d['status']) ?>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <?php if (!empty($d['is_external'])): ?>
+                    <span class="hint">—</span>
+                  <?php else: ?>
+                    <?= e($settleLabel[$d['settlement_status'] ?? 'none'] ?? ($d['settlement_status'] ?? '—')) ?>
+                  <?php endif; ?>
+                </td>
+                <td dir="ltr"><code><?= e($d['ref_id'] ?: '—') ?></code></td>
+                <td class="don-ops">
+                  <?php if (($d['status'] ?? '') === 'pending' && in_array(($d['gateway'] ?? ''), ['bank', 'manual'], true)): ?>
                     <form method="post" action="/api/confirm.php" style="display:inline" onsubmit="return confirm('مبلغ واقعاً به حساب‌تان رسیده؟');">
                       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                       <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
@@ -138,13 +170,21 @@ layout_header('پنل من');
                       <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
                       <button class="btn btn-sm btn-ghost" name="action" value="reject" type="submit">رد</button>
                     </form>
+                  <?php elseif (($d['status'] ?? '') === 'paid' && !empty($d['is_public_post'])): ?>
+                    <form method="post" style="display:inline">
+                      <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                      <input type="hidden" name="action" value="toggle_featured">
+                      <input type="hidden" name="donation_id" value="<?= (int)$d['id'] ?>">
+                      <button class="btn btn-sm <?= !empty($d['is_featured']) ? 'btn-primary' : 'btn-ghost' ?>" type="submit">
+                        <?= !empty($d['is_featured']) ? '★ نظر برتر' : '☆ انتخاب به‌عنوان برتر' ?>
+                      </button>
+                    </form>
                   <?php elseif (($d['status'] ?? '') === 'paid' && ($d['settlement_status'] ?? '') === 'none'): ?>
                     <span class="hint">در صف بررسی ادمین</span>
                   <?php else: ?>
                     —
                   <?php endif; ?>
-                </td>
-              </tr>
+                </td></tr>
             <?php endforeach; ?>
             </tbody>
           </table>

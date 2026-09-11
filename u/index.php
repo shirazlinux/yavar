@@ -33,12 +33,28 @@ $campaigns = $st->fetchAll();
 
 $showPublicDons = !empty($user['show_public_donations']);
 $posts = [];
+$pubLimit = (int) ($user['public_donations_limit'] ?? 10);
+if (!in_array($pubLimit, [5, 10, 20, 50], true)) {
+    $pubLimit = 10;
+}
+// ترتیب فقط از تنظیمات پنل صاحب صفحه (بازدیدکننده فیلتر ندارد)
+$pubSort = (string) ($user['public_donations_sort'] ?? 'newest');
+if (!in_array($pubSort, ['newest', 'highest', 'featured'], true)) {
+    $pubSort = 'newest';
+}
 if ($showPublicDons) {
+    $order = match ($pubSort) {
+        'highest' => 'amount DESC, id DESC',
+        'featured' => 'COALESCE(is_featured,0) DESC, id DESC',
+        default => 'id DESC',
+    };
     $st = db()->prepare(
-        "SELECT donor_name, message, amount, paid_at, is_anonymous, is_public_post
+        "SELECT id, donor_name, message, amount, paid_at, is_anonymous, is_public_post,
+                COALESCE(is_featured,0) AS is_featured, COALESCE(is_external,0) AS is_external, external_source
          FROM donations
          WHERE user_id=? AND status='paid' AND is_public_post=1
-         ORDER BY id DESC LIMIT 40"
+         ORDER BY {$order}
+         LIMIT " . (int) $pubLimit
     );
     $st->execute([(int) $user['id']]);
     $posts = $st->fetchAll();
@@ -50,6 +66,11 @@ $pubContact = trim((string) ($user['public_contact'] ?? ''));
 $social = social_links_from_user($user);
 $socialDefs = social_network_defs();
 $services = trim((string) ($user['services'] ?? ''));
+
+require_once dirname(__DIR__) . '/lib/Umami.php';
+$viewer = auth_user();
+$pageViews = Umami::recordProfileView((int) $user['id'], $viewer ? (int) $viewer['id'] : null);
+$showPageViews = Umami::userShowsViews($user);
 
 $seoDesc = trim((string) ($user['activity'] ?? ''));
 if ($seoDesc === '') {
@@ -91,12 +112,7 @@ layout_header('حمایت از ' . $publicName, $seoDesc, [
         <img src="<?= e($avatarUrl) ?>" alt="" width="80" height="80" style="border-radius:18px;border:1px solid var(--border);object-fit:cover">
         <div>
           <h1 class="page-title" style="margin:0"><?= e($publicName) ?></h1>
-          <?php
-            $dm = (string) ($user['display_mode'] ?? 'personal');
-            if (($dm === 'platform' || $dm === 'community') && trim((string)($user['display_name'] ?? '')) !== ''):
-          ?>
-            <p class="hint" style="margin:.25rem 0 0">فعال: <?= e($user['display_name']) ?></p>
-          <?php endif; ?>
+
         </div>
       </div>
       
@@ -161,6 +177,19 @@ layout_header('حمایت از ' . $publicName, $seoDesc, [
       </div>
       <?php endif; ?>
       <?php
+        $primaryLink = member_primary_presence_link($user);
+        if ($primaryLink):
+      ?>
+      <div class="card presence-review-card" style="box-shadow:none;margin:1rem 0">
+        <h2 style="margin-top:0;font-size:1.1rem">بررسی قبل از حمایت</h2>
+        <p class="hint" style="margin:0 0 .65rem">لینک رسمی این <?= e(member_type_badge($user)) ?> را ببینید و در صورت تمایل حمایت کنید.</p>
+        <a class="btn btn-ghost" href="<?= e($primaryLink['url']) ?>" target="_blank" rel="noopener me" dir="ltr" style="width:100%;justify-content:space-between;gap:.75rem;white-space:normal;text-align:right">
+          <span><?= e($primaryLink['label']) ?></span>
+          <span dir="ltr" style="overflow-wrap:anywhere;font-size:.88rem"><?= e($primaryLink['text']) ?></span>
+        </a>
+      </div>
+      <?php endif; ?>
+      <?php
         $linkItems = member_link_items($user);
         if ($linkItems):
       ?>
@@ -193,10 +222,27 @@ layout_header('حمایت از ' . $publicName, $seoDesc, [
       </div>
       <?php endif; ?>
 
-      <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+      <div class="stats-grid<?= !empty($showPageViews) ? ' stats-grid--3' : '' ?>">
         <div class="card stat"><div class="stat-label">تعداد حمایت</div><div class="stat-value" style="font-size:1.2rem"><?= fa_digits((string)$tot['count']) ?></div></div>
         <div class="card stat"><div class="stat-label">جمع حمایت</div><div class="stat-value" style="font-size:1.2rem"><?= e(money_fa($tot['sum'])) ?></div></div>
+        <?php if (!empty($showPageViews)): ?>
+          <div class="card stat"><div class="stat-label">بازدید صفحه</div><div class="stat-value" style="font-size:1.2rem"><?= e(Umami::formatViews((int) $pageViews)) ?></div></div>
+        <?php endif; ?>
       </div>
+
+      <?php
+        require_once dirname(__DIR__) . '/lib/Transparency.php';
+        if (Transparency::userEnabled($user)):
+          $spendEntries = Transparency::listForUser((int) $user['id']);
+          $spentSum = Transparency::spentSum((int) $user['id']);
+          echo Transparency::renderPublicPanel(
+              (int) $tot['sum'],
+              $spentSum,
+              $spendEntries,
+              (string) ($user['transparency_note'] ?? '')
+          );
+        endif;
+      ?>
 
       <?php if ($showPublicDons): ?>
       <h2 style="margin-top:1.5rem;font-size:1.15rem" id="supports">حمایت‌های دریافتی</h2>
@@ -205,15 +251,32 @@ layout_header('حمایت از ' . $publicName, $seoDesc, [
       <?php else: ?>
       <div class="post-list">
         <?php foreach ($posts as $p): ?>
-          <article class="card post-item" style="box-shadow:none;margin:.6rem 0">
+          <article class="card post-item<?= !empty($p['is_featured']) ? ' is-featured' : '' ?>" style="box-shadow:none;margin:.6rem 0">
             <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:.5rem;align-items:baseline">
-              <strong><?= e(donor_public_label($p)) ?></strong>
+              <strong>
+                <?= e(donor_public_label($p)) ?>
+                <?php if (!empty($p['is_featured'])): ?>
+                  <span class="feat-badge">★ برتر</span>
+                <?php endif; ?>
+                <?php if (!empty($p['is_external'])): ?>
+                  <?php
+                    $extTitle = 'پرداخت یا ثبت‌نظر از طریق یاور انجام نشده';
+                    if (!empty($p['external_source'])) {
+                        $extTitle .= ' · مبدأ: ' . (string) $p['external_source'];
+                    }
+                  ?>
+                  <span class="badge-ext" title="<?= e($extTitle) ?>">حمایت خارجی</span>
+                <?php endif; ?>
+              </strong>
               <span class="hint"><?= e(money_fa((int)$p['amount'])) ?>
                 <?php if (!empty($p['paid_at'])): ?> · <?= e(jdate_format($p['paid_at'], 'Y/m/d')) ?><?php endif; ?>
               </span>
             </div>
             <?php if (trim((string)($p['message'] ?? '')) !== ''): ?>
               <p style="margin:.45rem 0 0;color:var(--muted)"><?= e($p['message']) ?></p>
+            <?php endif; ?>
+            <?php if (!empty($p['is_external']) && trim((string)($p['external_source'] ?? '')) !== ''): ?>
+              <p class="hint" style="margin:.35rem 0 0;font-size:.8rem">مبدأ: <?= e((string)$p['external_source']) ?></p>
             <?php endif; ?>
           </article>
         <?php endforeach; ?>

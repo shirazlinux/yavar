@@ -213,12 +213,35 @@ SQL);
         'feed_enabled' => "INTEGER NOT NULL DEFAULT 1",
         'social_json' => "TEXT NOT NULL DEFAULT '{}'",
         'show_public_donations' => "INTEGER NOT NULL DEFAULT 0",
+        'show_page_views' => "INTEGER NOT NULL DEFAULT 1",
+        'page_views' => "INTEGER NOT NULL DEFAULT 0",
+        'public_donations_limit' => "INTEGER NOT NULL DEFAULT 10",
+        'public_donations_sort' => "TEXT NOT NULL DEFAULT 'newest'",
+        'notify_email' => "INTEGER NOT NULL DEFAULT 1",
+        'notify_sms' => "INTEGER NOT NULL DEFAULT 1",
+        'show_transparency' => "INTEGER NOT NULL DEFAULT 0",
+        'transparency_note' => "TEXT NOT NULL DEFAULT ''",
     ] as $col => $def) {
         if (!in_array($col, $names, true)) {
             $pdo->exec("ALTER TABLE users ADD COLUMN {$col} {$def}");
             $names[] = $col;
         }
     }
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS spend_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  spent_on TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_spend_user_date ON spend_entries(user_id, spent_on DESC);
+SQL);
 
     $dcols = $pdo->query('PRAGMA table_info(donations)')->fetchAll();
     $dnames = array_column($dcols, 'name');
@@ -233,6 +256,15 @@ SQL);
     }
     if (!in_array('is_anonymous', $dnames, true)) {
         $pdo->exec("ALTER TABLE donations ADD COLUMN is_anonymous INTEGER NOT NULL DEFAULT 0");
+    }
+    if (!in_array('is_featured', $dnames, true)) {
+        $pdo->exec("ALTER TABLE donations ADD COLUMN is_featured INTEGER NOT NULL DEFAULT 0");
+    }
+    if (!in_array('is_external', $dnames, true)) {
+        $pdo->exec("ALTER TABLE donations ADD COLUMN is_external INTEGER NOT NULL DEFAULT 0");
+    }
+    if (!in_array('external_source', $dnames, true)) {
+        $pdo->exec("ALTER TABLE donations ADD COLUMN external_source TEXT NOT NULL DEFAULT ''");
     }
     if (!in_array('settled_at', $dnames, true)) {
         $pdo->exec("ALTER TABLE donations ADD COLUMN settled_at TEXT");

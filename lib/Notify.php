@@ -28,6 +28,9 @@ final class Notify
         if (!empty($extra['activity'])) {
             $adminBody .= "فعالیت: " . mb_substr((string) $extra['activity'], 0, 280) . "\n";
         }
+        if (!empty($extra['presence_url'])) {
+            $adminBody .= "لینک بررسی: " . $extra['presence_url'] . "\n";
+        }
         $adminBody .= "\nپنل مدیریت:\n{$site}/admin/";
         self::admin('ثبت‌نام جدید — در انتظار تأیید', $adminBody);
     }
@@ -68,33 +71,84 @@ final class Notify
         self::mail($email, $name, 'نتیجه بررسی عضویت — یاور', $body);
     }
 
-    /** حمایت جدید در صف (در انتظار پرداخت/واریز) */
+
+    /** آیا کاربر اعلان ایمیل می‌خواهد؟ پیش‌فرض: بله */
+    public static function wantsEmail(?array $user): bool
+    {
+        if (!$user) {
+            return true;
+        }
+        if (!array_key_exists('notify_email', $user)) {
+            return true;
+        }
+        return (int) $user['notify_email'] === 1;
+    }
+
+    /** آیا کاربر اعلان SMS می‌خواهد؟ پیش‌فرض: بله */
+    public static function wantsSms(?array $user): bool
+    {
+        if (!$user) {
+            return true;
+        }
+        if (!array_key_exists('notify_sms', $user)) {
+            return true;
+        }
+        return (int) $user['notify_sms'] === 1;
+    }
+
+    public static function loadUser(int $userId): ?array
+    {
+        if ($userId < 1) {
+            return null;
+        }
+        $st = db()->prepare('SELECT * FROM users WHERE id=? LIMIT 1');
+        $st->execute([$userId]);
+        $u = $st->fetch();
+        return $u ?: null;
+    }
+
+    /** اعلام صف/واریز (نه شروع درگاه) — SMS ندارد؛ ایمیل با توجه به تنظیم کاربر */
     public static function donationPending(
         ?string $phone,
         ?string $email,
         string $name,
         int $amount,
         string $refCode,
-        string $donorName = ''
+        string $donorName = '',
+        ?array $user = null
     ): void {
         $site = rtrim((string) (app_config()['site_url'] ?? ''), '/');
-        $body = "حمایت جدید در صف واریز/پرداخت\nمبلغ: " . number_format($amount) . " تومان\nکد: {$refCode}";
+        $body = "اعلام واریز / حمایت در صف بررسی
+مبلغ: " . number_format($amount) . " تومان
+کد: {$refCode}";
         if ($donorName !== '') {
-            $body .= "\nاز: {$donorName}";
+            $body .= "
+از: {$donorName}";
         }
         if ($site !== '') {
-            $body .= "\n{$site}/dashboard/";
+            $body .= "
+{$site}/dashboard/";
         }
-        self::sms($phone, "سلام {$name}\n{$body}");
-        self::mail($email, $name, 'حمایت جدید در صف — یاور', $body);
+        // بدون SMS — شروع درگاه هم دیگر این متد را صدا نمی‌زند
+        if (self::wantsEmail($user)) {
+            self::mail($email, $name, 'اعلام واریز / حمایت در صف — یاور', $body);
+        }
 
-        $adminBody = "حمایت جدید در صف پرداخت/واریز\n\n"
-            . "فعال: {$name}\n"
-            . "مبلغ: " . number_format($amount) . " تومان\n"
-            . "کد: {$refCode}\n"
-            . ($donorName !== '' ? "حامی: {$donorName}\n" : '')
-            . "\nپنل:\n{$site}/admin/settlements.php";
-        self::admin('حمایت جدید در صف', $adminBody);
+        $adminBody = "حمایت در صف / اعلام واریز
+
+"
+            . "فعال: {$name}
+"
+            . "مبلغ: " . number_format($amount) . " تومان
+"
+            . "کد: {$refCode}
+"
+            . ($donorName !== '' ? "حامی: {$donorName}
+" : '')
+            . "
+پنل:
+{$site}/admin/settlements.php";
+        self::admin('حمایت در صف / اعلام واریز', $adminBody);
     }
 
     /** حمایت پرداخت‌شده / تأییدشده */
@@ -103,25 +157,49 @@ final class Notify
         ?string $email,
         string $name,
         int $amount,
-        string $ref = ''
+        string $ref = '',
+        ?array $user = null
     ): void {
         $site = rtrim((string) (app_config()['site_url'] ?? ''), '/');
         $body = "یک حمایت به مبلغ " . number_format($amount) . " تومان برای صفحه شما ثبت و تأیید شد.";
         if ($ref !== '') {
-            $body .= "\nکد: {$ref}";
+            $body .= "
+کد: {$ref}";
         }
-        $body .= "\nپس از تأیید مدیریت برای تسویه، مبلغ به حساب شما واریز می‌شود.";
+        $body .= "
+پس از تأیید مدیریت برای تسویه، مبلغ به حساب شما واریز می‌شود.";
         if ($site !== '') {
-            $body .= "\n{$site}/dashboard/";
+            $body .= "
+{$site}/dashboard/";
         }
-        self::sms($phone, "سلام {$name}\nیک حمایت به مبلغ " . number_format($amount) . " تومان برای صفحه شما ثبت و تأیید شد." . ($site !== '' ? "\n{$site}" : ''));
-        self::mail($email, $name, 'حمایت جدید تأیید شد — یاور', $body);
+        if (self::wantsSms($user)) {
+            self::sms(
+                $phone,
+                "سلام {$name}
+حمایت شدید 💚
+مبلغ: " . number_format($amount) . " تومان تأیید شد."
+                . ($ref !== '' ? "
+کد: {$ref}" : '')
+                . ($site !== '' ? "
+{$site}/dashboard/" : '')
+            );
+        }
+        if (self::wantsEmail($user)) {
+            self::mail($email, $name, 'حمایت شدید — یاور', $body);
+        }
 
-        $adminBody = "پرداخت حمایت تأیید شد (آماده تسویه)\n\n"
-            . "فعال: {$name}\n"
-            . "مبلغ: " . number_format($amount) . " تومان\n"
-            . ($ref !== '' ? "کد/پیگیری: {$ref}\n" : '')
-            . "\nتسویه:\n{$site}/admin/settlements.php";
+        $adminBody = "پرداخت حمایت تأیید شد (آماده تسویه)
+
+"
+            . "فعال: {$name}
+"
+            . "مبلغ: " . number_format($amount) . " تومان
+"
+            . ($ref !== '' ? "کد/پیگیری: {$ref}
+" : '')
+            . "
+تسویه:
+{$site}/admin/settlements.php";
         self::admin('پرداخت حمایت تأیید شد', $adminBody);
     }
 
@@ -131,7 +209,8 @@ final class Notify
         ?string $email,
         string $name,
         int $amount,
-        string $kind // settled | refunded
+        string $kind, // settled | refunded
+        ?array $user = null
     ): void {
         $label = $kind === 'refunded' ? 'بازگشت وجه' : 'تسویه';
         $body = "{$label} حمایت به مبلغ " . number_format($amount) . " تومان ثبت شد.";
@@ -139,8 +218,12 @@ final class Notify
         if ($site !== '') {
             $body .= "\n{$site}/dashboard/";
         }
-        self::sms($phone, "سلام {$name}\n{$body}\nیاور");
-        self::mail($email, $name, "{$label} حمایت — یاور", $body);
+        if (self::wantsSms($user)) {
+            self::sms($phone, "سلام {$name}\n{$body}\nیاور");
+        }
+        if (self::wantsEmail($user)) {
+            self::mail($email, $name, "{$label} حمایت — یاور", $body);
+        }
     }
 
     /** ایمیل به مدیر(ان) — جدا از پنل */

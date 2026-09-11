@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/lib/layout.php';
+require_once dirname(__DIR__) . '/lib/pages.php';
 $user = auth_require_login();
 $msg = '';
 $err = '';
@@ -16,7 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_verify($_POST['csrf'] ?? null)
         }
         db()->prepare("UPDATE users SET role='hamyar', status=?, updated_at=? WHERE id=?")
             ->execute([$status, $now, (int)$user['id']]);
-        header('Location: /dashboard/profile.php?enabled=1');
+        $st = db()->prepare('SELECT * FROM users WHERE id=?');
+        $st->execute([(int) $user['id']]);
+        $fresh = $st->fetch();
+        if ($fresh) {
+            page_create_primary_from_user($fresh);
+        }
+        header('Location: /dashboard/pages.php?enabled=1');
         exit;
     }
 }

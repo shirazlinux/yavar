@@ -93,13 +93,13 @@ $notifyPrivate = !$link || !empty($link['notify_private']);
 layout_header('اتصال تلگرام', 'اعلان حمایت در گروه و اطلاع در چت خصوصی');
 ?>
 <section class="page-section">
-  <div class="container narrow">
+  <div class="container dash-page">
     <h1 class="page-title">اعلان تلگرام</h1>
+    <?php dashboard_nav($user, 'telegram'); ?>
     <p class="page-lead">
       <strong>گروه/کانال:</strong> اعلام عمومی حمایت‌ها برای مخاطبان.<br>
       <strong>چت خصوصی با ربات:</strong> اطلاع‌رسانی شخصی برای خودتان (دریافت، کد پیگیری، …).
     </p>
-    <p class="hint"><a href="/dashboard/">← بازگشت به پنل</a></p>
 
     <?php if ($flash): ?><div class="form-msg show ok"><?= e($flash) ?></div><?php endif; ?>
     <?php if ($flashErr): ?><div class="form-msg show error"><?= e($flashErr) ?></div><?php endif; ?>

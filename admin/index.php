@@ -4,17 +4,56 @@ require_once dirname(__DIR__) . '/lib/layout.php';
 require_once dirname(__DIR__) . '/lib/Notify.php';
 require_once dirname(__DIR__) . '/lib/PayPing.php';
 require_once dirname(__DIR__) . '/lib/campaigns.php';
+require_once dirname(__DIR__) . '/lib/pages.php';
 $admin = auth_require_admin();
+pages_ensure_backfill(db());
 campaign_refresh_status();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_verify($_POST['csrf'] ?? null)) {
-    $id = (int) ($_POST['user_id'] ?? 0);
-    $action = $_POST['action'] ?? '';
+    $action = (string) ($_POST['action'] ?? '');
     $reason = trim((string) ($_POST['reject_reason'] ?? ''));
+
+    // تأیید/رد صفحات اضافی (غیر از صفحهٔ اصلی حساب)
+    $pageId = (int) ($_POST['page_id'] ?? 0);
+    if ($pageId > 0 && in_array($action, ['approve_page', 'reject_page', 'pending_page'], true)) {
+        $status = $action === 'approve_page' ? 'approved' : ($action === 'reject_page' ? 'rejected' : 'pending');
+        $p = page_by_id($pageId);
+        if ($p && (int) ($p['is_primary'] ?? 0) === 0) {
+            page_set_status($pageId, $status, $reason);
+            $st = db()->prepare('SELECT display_name, phone, email FROM users WHERE id=? AND is_admin=0');
+            $st->execute([(int) $p['user_id']]);
+            $u = $st->fetch();
+            if ($u) {
+                $name = (string) $u['display_name'];
+                $title = (string) ($p['title'] ?? '');
+                $slug = (string) ($p['slug'] ?? '');
+                if ($action === 'approve_page') {
+                    Notify::approved(
+                        (string) ($u['phone'] ?? ''),
+                        (string) ($u['email'] ?? ''),
+                        $name,
+                        $slug
+                    );
+                } elseif ($action === 'reject_page') {
+                    Notify::rejected(
+                        (string) ($u['phone'] ?? ''),
+                        (string) ($u['email'] ?? ''),
+                        $name,
+                        $reason !== '' ? $reason : ('صفحه «' . $title . '» تأیید نشد.')
+                    );
+                }
+            }
+        }
+        header('Location: /admin/?focus=pages');
+        exit;
+    }
+
+    $id = (int) ($_POST['user_id'] ?? 0);
     if ($id && in_array($action, ['approve', 'reject', 'pending'], true)) {
         $status = $action === 'approve' ? 'approved' : ($action === 'reject' ? 'rejected' : 'pending');
         $st = db()->prepare('UPDATE users SET status=?, reject_reason=?, updated_at=? WHERE id=? AND is_admin=0');
         $st->execute([$status, $action === 'reject' ? $reason : '', gmdate('c'), $id]);
+        pages_approve_primary_for_user($id, $status);
 
         $st = db()->prepare('SELECT display_name, phone, slug, email FROM users WHERE id=?');
         $st->execute([$id]);
@@ -47,6 +86,7 @@ $stat = [
     'users_total' => (int) $pdo->query("SELECT COUNT(*) FROM users WHERE is_admin=0")->fetchColumn(),
     'hamyar_approved' => (int) $pdo->query("SELECT COUNT(*) FROM users WHERE is_admin=0 AND status='approved' AND COALESCE(role,'hamyar')='hamyar'")->fetchColumn(),
     'pending' => (int) $pdo->query("SELECT COUNT(*) FROM users WHERE is_admin=0 AND status='pending'")->fetchColumn(),
+    'pages_pending' => pages_pending_extra_count(),
     'supporters' => (int) $pdo->query("SELECT COUNT(*) FROM users WHERE is_admin=0 AND role='supporter'")->fetchColumn(),
     'campaigns_active' => (int) $pdo->query("SELECT COUNT(*) FROM campaigns WHERE status='active'")->fetchColumn(),
     'paid_sum' => (int) $pdo->query("SELECT COALESCE(SUM(amount),0) FROM donations WHERE status='paid'")->fetchColumn(),
@@ -77,6 +117,7 @@ layout_header('مدیریت — آمار و تأیید');
     <h1 class="page-title">پنل مدیریت</h1>
     <p class="page-lead">
       <a href="/admin/settlements.php">تسویه و مبالغ تسویه‌نشده ←</a>
+      · <a href="/admin/pages.php"><strong>تأیید صفحات اضافی<?= $stat['pages_pending'] ? ' (' . e(fa_digits((string) $stat['pages_pending'])) . ')' : '' ?></strong></a>
       · <a href="/admin/campaigns.php">کمپین‌ها</a>
       · <a href="/admin/payping-connect.php">پی‌پینگ</a>
       · <a href="/admin/security.php">رویدادهای امنیتی</a>
@@ -85,7 +126,8 @@ layout_header('مدیریت — آمار و تأیید');
     <div class="stats-grid">
       <div class="card stat"><div class="stat-label">کل حساب‌ها</div><div class="stat-value"><?= e(number_fa($stat['users_total'])) ?></div></div>
       <div class="card stat"><div class="stat-label">فعال/پروژه تأییدشده</div><div class="stat-value"><?= e(number_fa($stat['hamyar_approved'])) ?></div></div>
-      <div class="card stat"><div class="stat-label">در انتظار تأیید</div><div class="stat-value"><?= e(number_fa($stat['pending'])) ?></div></div>
+      <div class="card stat"><div class="stat-label">حساب در انتظار</div><div class="stat-value"><?= e(number_fa($stat['pending'])) ?></div></div>
+      <div class="card stat"><div class="stat-label">صفحهٔ اضافی در انتظار</div><div class="stat-value" style="<?= $stat['pages_pending'] ? 'color:#fcd34d' : '' ?>"><?= e(number_fa($stat['pages_pending'])) ?></div></div>
       <div class="card stat"><div class="stat-label">حامیان</div><div class="stat-value"><?= e(number_fa($stat['supporters'])) ?></div></div>
       <div class="card stat"><div class="stat-label">کمپین فعال</div><div class="stat-value"><?= e(number_fa($stat['campaigns_active'])) ?></div></div>
       <div class="card stat"><div class="stat-label">جمع پرداخت‌های موفق</div><div class="stat-value" style="font-size:1.1rem"><?= e(money_fa($stat['paid_sum'])) ?></div></div>
@@ -99,6 +141,46 @@ layout_header('مدیریت — آمار و تأیید');
         مبلغ <strong><?= e(money_fa($stat['ready_sum'])) ?></strong> آماده تسویه است.
         <a href="/admin/settlements.php?s=ready">رفتن به تسویه و تیک‌زدن ←</a>
       </div>
+    <?php endif; ?>
+
+    <?php
+      $pendingPages = pages_admin_list('pending');
+    ?>
+    <h2 id="pages" style="margin-top:2rem">تأیید صفحات اضافی</h2>
+    <p class="hint">صفحاتی که کاربر علاوه بر صفحهٔ اصلی‌اش ساخته؛ تا تأیید نشوند عمومی نمی‌شوند.
+      <a href="/admin/pages.php">مدیریت کامل صفحات ←</a>
+    </p>
+    <?php if (!$pendingPages): ?>
+      <div class="card"><p class="hint" style="margin:0">صفحهٔ اضافی در انتظار نیست.</p></div>
+    <?php else: ?>
+      <?php foreach ($pendingPages as $p): ?>
+        <article class="card" style="margin-bottom:1rem;border-color:rgba(251,191,36,.35)">
+          <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+            <div>
+              <div class="hint"><?= e(page_kind_label($p['kind'] ?? '')) ?> · صاحب: <?= e((string) ($p['owner_display_name'] ?? '')) ?> (<?= e((string) ($p['owner_slug'] ?? '')) ?>)</div>
+              <h3 style="margin:.25rem 0;font-size:1.1rem"><?= e((string) ($p['title'] ?? '')) ?></h3>
+              <div class="hint" dir="ltr"><a href="/u/<?= e(rawurlencode((string) ($p['slug'] ?? ''))) ?>" target="_blank" rel="noopener">/u/<?= e((string) ($p['slug'] ?? '')) ?></a></div>
+              <p style="margin:.55rem 0 0"><?= e(mb_substr((string) ($p['activity'] ?? ''), 0, 280)) ?></p>
+              <?php if (trim((string) ($p['git_url'] ?? '')) !== ''): ?>
+                <p class="hint" dir="ltr"><a href="<?= e((string) $p['git_url']) ?>" target="_blank" rel="noopener"><?= e((string) $p['git_url']) ?></a></p>
+              <?php endif; ?>
+              <?php if (trim((string) ($p['website_url'] ?? '')) !== ''): ?>
+                <p class="hint" dir="ltr"><a href="<?= e((string) $p['website_url']) ?>" target="_blank" rel="noopener"><?= e((string) $p['website_url']) ?></a></p>
+              <?php endif; ?>
+            </div>
+            <span class="badge badge-warn">در انتظار</span>
+          </div>
+          <form method="post" class="admin-actions" style="margin-top:.85rem">
+            <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="page_id" value="<?= (int) $p['id'] ?>">
+            <input type="text" name="reject_reason" placeholder="دلیل رد (اختیاری)" class="admin-actions__reason">
+            <div class="admin-actions__row">
+              <button class="btn btn-primary admin-btn" name="action" value="approve_page" type="submit">تأیید صفحه</button>
+              <button class="btn btn-danger-ghost admin-btn" name="action" value="reject_page" type="submit">رد صفحه</button>
+            </div>
+          </form>
+        </article>
+      <?php endforeach; ?>
     <?php endif; ?>
 
     <h2 style="margin-top:2rem">تأیید حساب‌ها</h2>
@@ -140,6 +222,17 @@ layout_header('مدیریت — آمار و تأیید');
         </div>
         <p><strong>فعالیت:</strong><br><?= nl2br(e($u['activity'] ?? '')) ?></p>
         <?php if (!empty($u['bio'])): ?><p><strong>بیو:</strong><br><?= nl2br(e($u['bio'])) ?></p><?php endif; ?>
+        <?php
+          require_once dirname(__DIR__) . '/lib/profile.php';
+          $admPresence = member_primary_presence_link($u);
+        ?>
+        <?php if ($admPresence): ?>
+          <p><strong><?= e($admPresence['label']) ?>:</strong>
+            <a href="<?= e($admPresence['url']) ?>" target="_blank" rel="noopener" dir="ltr"><?= e($admPresence['text']) ?></a>
+          </p>
+        <?php else: ?>
+          <p class="hint">لینک محل فعالیت / مخزن ثبت نشده.</p>
+        <?php endif; ?>
         <div class="admin-bank">
           <div>شبا: <code dir="ltr"><?= e($u['sheba'] ?: '—') ?></code></div>
           <div>کارت: <code dir="ltr"><?= e($u['card_number'] ?: '—') ?></code></div>
@@ -147,10 +240,12 @@ layout_header('مدیریت — آمار و تأیید');
         <form method="post" class="admin-actions">
           <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
           <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
-          <button class="btn btn-primary" name="action" value="approve" type="submit">تأیید</button>
-          <button class="btn btn-ghost" name="action" value="pending" type="submit">انتظار</button>
-          <input type="text" name="reject_reason" placeholder="دلیل رد" style="flex:1;min-width:12rem">
-          <button class="btn btn-danger-ghost" name="action" value="reject" type="submit">رد</button>
+          <input type="text" name="reject_reason" placeholder="دلیل رد (اختیاری)" class="admin-actions__reason">
+          <div class="admin-actions__row">
+            <button class="btn btn-primary admin-btn" name="action" value="approve" type="submit">تأیید</button>
+            <button class="btn btn-ghost admin-btn" name="action" value="pending" type="submit">در انتظار</button>
+            <button class="btn btn-danger-ghost admin-btn" name="action" value="reject" type="submit">رد</button>
+          </div>
         </form>
       </article>
     <?php endforeach; ?>

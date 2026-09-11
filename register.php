@@ -41,6 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $activity = trim((string) ($_POST['activity'] ?? ''));
     $bio = trim((string) ($_POST['bio'] ?? ''));
     $services = trim((string) ($_POST['services'] ?? ''));
+    $presenceRaw = trim((string) ($_POST['presence_url'] ?? ''));
+    $presenceUrl = normalize_url_field($presenceRaw);
+    $presenceMeta = presence_link_meta($displayMode);
     $sheba = normalize_sheba((string) ($_POST['sheba'] ?? ''));
     $card = normalize_card((string) ($_POST['card_number'] ?? ''));
     $phone = Sms::normalizeMobile((string) ($_POST['phone'] ?? ''));
@@ -96,6 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ? 'نام جامعه برای نمایش عمومی الزامی است.'
             : 'نام پروژه برای نمایش عمومی الزامی است.';
     }
+    if ($presenceRaw === '' || $presenceUrl === '') {
+        $errors[] = $presenceMeta['label'] . ' را به‌صورت یک آدرس معتبر وارد کنید.';
+    }
     if (mb_strlen($activity) < 20) {
         $errors[] = 'توضیح فعالیت در نرم‌افزار آزاد حداقل ۲۰ کاراکتر باشد.';
     }
@@ -135,10 +141,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $now = gmdate('c');
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $avatar = 'preset:' . $avatarPreset;
-        $ins = db()->prepare('INSERT INTO users (email, password_hash, display_name, slug, bio, activity, services, card_number, sheba, phone, status, is_admin, policy_accepted_at, created_at, updated_at, avatar, display_mode, platform_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $gitUrl = $presenceMeta['store'] === 'git_url' ? $presenceUrl : '';
+        $websiteUrl = $presenceMeta['store'] === 'website_url' ? $presenceUrl : '';
+        $ins = db()->prepare('INSERT INTO users (email, password_hash, display_name, slug, bio, activity, services, card_number, sheba, phone, status, is_admin, policy_accepted_at, created_at, updated_at, avatar, display_mode, platform_name, git_url, website_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $ins->execute([
             $email, $hash, $display, $slug, $bio, $activity, $services, $card, $sheba, $phone,
-            'pending', 0, $now, $now, $now, $avatar, $displayMode, $platformName,
+            'pending', 0, $now, $now, $now, $avatar, $displayMode, $platformName, $gitUrl, $websiteUrl,
         ]);
         unset($_SESSION['otp_phone'], $_SESSION['otp_code'], $_SESSION['otp_hash'], $_SESSION['otp_exp'], $_SESSION['otp_ok'], $_SESSION['otp_attempts']);
         Captcha::clearPassed();
@@ -146,6 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Notify::registered($phone, $email, $display, [
                 'slug' => $slug,
                 'activity' => $activity,
+                'presence_url' => $presenceUrl,
             ]);
         } catch (Throwable $e) {
             error_log('register Notify::registered: ' . $e->getMessage());
@@ -195,16 +204,29 @@ $presets = avatar_presets();
         <div class="hp" aria-hidden="true"><label>Website</label><input type="text" name="website" tabindex="-1" autocomplete="off"></div>
 
         <h3 class="form-subhead" style="margin-top:0">نام نمایشی برای دریافت حمایت</h3>
-        <label class="check-line"><input type="radio" name="display_mode" value="personal" <?= (($_POST['display_mode'] ?? 'personal') === 'personal') ? 'checked' : '' ?>> فعال (با نام خودم)</label>
+        <label class="check-line"><input type="radio" name="display_mode" value="personal" <?= (($_POST['display_mode'] ?? 'personal') === 'personal') ? 'checked' : '' ?>> فعال (حمایت با نام خودم)</label>
         <label class="check-line"><input type="radio" name="display_mode" value="platform" <?= (($_POST['display_mode'] ?? '') === 'platform') ? 'checked' : '' ?>> پروژه</label>
         <label class="check-line"><input type="radio" name="display_mode" value="community" <?= (($_POST['display_mode'] ?? '') === 'community') ? 'checked' : '' ?>> جامعه</label>
-        <label for="display_name">نام شخصی *</label>
+        <p class="hint">اگر پروژه یا جامعه بسازید، در صفحه عمومی فقط همان نام دیده می‌شود؛ نام شخصی‌تان زیر پروفایل نشان داده نمی‌شود.</p>
+        <label for="display_name">نام شخصی (برای حساب) *</label>
         <input id="display_name" name="display_name" required maxlength="80" value="<?= e($_POST['display_name'] ?? '') ?>">
         <label for="platform_name">نام پروژه / جامعه (برای حالت پروژه یا جامعه)</label>
         <input id="platform_name" name="platform_name" maxlength="80" value="<?= e($_POST['platform_name'] ?? '') ?>" placeholder="مثلاً نام پروژه یا جامعه آزاد">
 
+        <?php
+          $regMode = normalize_display_mode($_POST['display_mode'] ?? 'personal');
+          $regPresence = presence_link_meta($regMode);
+        ?>
+        <div id="presence-url-wrap">
+          <label for="presence_url"><span id="presence-url-label"><?= e($regPresence['label']) ?></span> *</label>
+          <input id="presence_url" name="presence_url" required dir="ltr" class="ltr-field" maxlength="300"
+                 placeholder="<?= e($regPresence['placeholder']) ?>"
+                 value="<?= e($_POST['presence_url'] ?? '') ?>">
+          <p class="hint" id="presence-url-hint"><?= e($regPresence['hint']) ?> این لینک در صفحهٔ عمومی‌تان نمایش داده می‌شود.</p>
+        </div>
+
         <label for="slug">آدرس صفحه (لاتین، اختیاری)</label>
-        <div class="input-prefix"><span>yavar.sudoshz.ir/u/</span>
+        <div class="input-prefix"><span dir="ltr">donate.sudoshz.ir/u/</span>
           <input id="slug" name="slug" maxlength="40" pattern="[A-Za-z0-9\-_]*" value="<?= e($_POST['slug'] ?? '') ?>" placeholder="my-name" dir="ltr" class="ltr-field">
         </div>
 
@@ -222,19 +244,39 @@ $presets = avatar_presets();
         <label for="email">ایمیل *</label>
         <input id="email" type="email" name="email" required value="<?= e($_POST['email'] ?? '') ?>" dir="ltr" class="ltr-field" autocomplete="email">
 
-        <label for="phone">موبایل *</label>
-        <p class="hint" style="margin:0 0 .35rem">فقط برای اطلاع‌رسانی حمایت؛ در صفحه عمومی نمایش داده نمی‌شود.</p>
-        <div class="otp-row">
-          <input id="phone" type="tel" name="phone" required dir="ltr" class="ltr-field" inputmode="tel" maxlength="13" placeholder="0912xxxxxxx" value="<?= e($_POST['phone'] ?? '') ?>">
-          <button type="button" class="btn btn-ghost" id="btn-send-otp">ارسال کد</button>
-        </div>
-        <label for="otp">کد تأیید ۶ رقمی پیامک *</label>
-        <input id="otp" name="otp" required dir="ltr" class="ltr-field" inputmode="numeric" maxlength="6" placeholder="123456" value="<?= e($_POST['otp'] ?? '') ?>">
-        <p class="hint" id="otp-status" role="status"></p>
+        <h3 class="form-subhead">تأیید موبایل</h3>
+        <p class="hint" style="margin:0 0 .75rem">شماره فقط برای اطلاع‌رسانی حمایت است و در صفحه عمومی نمایش داده نمی‌شود.</p>
 
-        <h3 class="form-subhead">کپچای امنیتی</h3>
-        <p class="hint">یک‌بار در این نشست کافی است. پاسخ را با <strong>عدد انگلیسی</strong> بنویسید (مثلاً 12). اگر فارسی بزنید خودکار انگلیسی می‌شود.</p>
-        <?= Captcha::renderBox() ?>
+        <div class="reg-step" id="reg-step-phone">
+          <div class="reg-step__title"><span class="reg-step__num">۱</span> شماره موبایل</div>
+          <label for="phone">موبایل *</label>
+          <input id="phone" type="tel" name="phone" required dir="ltr" class="ltr-field" inputmode="tel" maxlength="13" placeholder="0912xxxxxxx" autocomplete="tel" value="<?= e($_POST['phone'] ?? '') ?>">
+        </div>
+
+        <div class="reg-step" id="reg-step-captcha">
+          <div class="reg-step__title"><span class="reg-step__num">۲</span> کپچای امنیتی</div>
+          <p class="hint" style="margin:0 0 .5rem">
+            قبل از «ارسال کد»، این جمع/تفریق را حل کنید.
+            پاسخ را با <strong>عدد انگلیسی</strong> بنویسید (مثلاً <span dir="ltr">12</span>). اگر فارسی بزنید خودکار انگلیسی می‌شود.
+            یک‌بار در این نشست کافی است.
+          </p>
+          <?= Captcha::renderBox() ?>
+          <div class="otp-row" style="margin-top:.75rem">
+            <button type="button" class="btn btn-primary" id="btn-send-otp">ارسال کد پیامکی</button>
+          </div>
+          <p class="hint" id="otp-status" role="status" aria-live="polite"></p>
+          <div class="otp-timer" id="otp-timer" hidden dir="ltr" aria-live="polite">
+            <span aria-hidden="true">⏱</span>
+            <span id="otp-timer-text">03:00</span>
+          </div>
+        </div>
+
+        <div class="reg-step" id="reg-step-otp">
+          <div class="reg-step__title"><span class="reg-step__num">۳</span> کد تأیید پیامک</div>
+          <label for="otp">کد ۶ رقمی *</label>
+          <input id="otp" name="otp" required dir="ltr" class="ltr-field" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code" value="<?= e($_POST['otp'] ?? '') ?>">
+          <p class="hint" style="margin:.35rem 0 0">کد را از پیامک کپی کنید. اعتبار کد حدود ۵ دقیقه است؛ دکمه ارسال هر ۳ دقیقه یک‌بار فعال می‌شود.</p>
+        </div>
 
 
         <div class="grid-2">
@@ -275,5 +317,40 @@ $presets = avatar_presets();
     <?php endif; ?>
   </div>
 </section>
-<script src="/assets/js/register.js?v=3" defer></script>
+<script>
+(function(){
+  var meta = {
+    personal: {
+      label: 'لینک محل فعالیت',
+      hint: 'جایی که به‌عنوان فعال نرم‌افزار آزاد شناخته می‌شوید (پروفایل گیت، وبلاگ، صفحه مشارکت‌ها، …). این لینک در صفحهٔ عمومی‌تان نمایش داده می‌شود.',
+      placeholder: 'https://github.com/username'
+    },
+    platform: {
+      label: 'لینک مخزن پروژه',
+      hint: 'آدرس ریپوی پروژه (گیت‌هاب، کدبرگ، گیت‌لب، …) تا حامیان قبل از حمایت بررسی کنند. این لینک در صفحهٔ عمومی‌تان نمایش داده می‌شود.',
+      placeholder: 'https://github.com/org/project'
+    },
+    community: {
+      label: 'لینک صفحه جامعه',
+      hint: 'وب‌سایت، ویکی، گروه یا صفحهٔ عمومی جامعه تا حامیان بتوانند آن را بررسی کنند. این لینک در صفحهٔ عمومی‌تان نمایش داده می‌شود.',
+      placeholder: 'https://example.org/community'
+    }
+  };
+  function sync() {
+    var mode = (document.querySelector('input[name=display_mode]:checked') || {}).value || 'personal';
+    var m = meta[mode] || meta.personal;
+    var lab = document.getElementById('presence-url-label');
+    var hint = document.getElementById('presence-url-hint');
+    var inp = document.getElementById('presence_url');
+    if (lab) lab.textContent = m.label;
+    if (hint) hint.textContent = m.hint;
+    if (inp) inp.placeholder = m.placeholder;
+  }
+  document.querySelectorAll('input[name=display_mode]').forEach(function(el){
+    el.addEventListener('change', sync);
+  });
+  sync();
+})();
+</script>
+<script src="/assets/js/register.js?v=5" defer></script>
 <?php layout_footer(); ?>

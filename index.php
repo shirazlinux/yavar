@@ -12,7 +12,8 @@ if (!in_array($view, ['all', 'hamyar', 'platform', 'community'], true)) {
     $view = 'all';
 }
 
-$sql = "SELECT id, display_name, platform_name, display_mode, slug, bio, activity, avatar, services
+$sql = "SELECT id, display_name, platform_name, display_mode, slug, bio, activity, avatar, services,
+               COALESCE(page_views, 0) AS page_views
         FROM users WHERE status='approved' AND is_admin=0 AND COALESCE(role,'hamyar')='hamyar'";
 if ($view === 'hamyar') {
     $sql .= " AND COALESCE(display_mode,'personal')='personal'";
@@ -21,7 +22,8 @@ if ($view === 'hamyar') {
 } elseif ($view === 'community') {
     $sql .= " AND display_mode='community'";
 }
-$sql .= " ORDER BY updated_at DESC LIMIT 60";
+// در همه فیلترها: بیشترین بازدید بالاتر؛ در تساوی، تازه‌تر به‌روزشده
+$sql .= " ORDER BY COALESCE(page_views, 0) DESC, updated_at DESC LIMIT 60";
 $people = db()->query($sql)->fetchAll();
 
 $campaigns = db()->query(
@@ -58,10 +60,10 @@ layout_header(
     <aside class="card">
       <h2 style="margin-top:0">چطور شروع کنم؟</h2>
       <div class="steps">
-        <div class="step"><strong>حمایت بدون ورود</strong> نیازی به ساخت حساب نیست. مستقیم برو سراغ صفحه فعال یا پروژه مورد علاقه‌ات و حمایت کن.</div>
-        <div class="step"><strong>حساب کاربری (اختیاری)</strong> اگر دوست داری فعالان را دنبال کنی و از به‌روزرسانی‌ها باخبر بشی، یک حساب بساز.</div>
-        <div class="step"><strong>اگر خودت حمایت دریافت می‌کنی</strong> صفحه خودت را بساز. هر وقت آماده بودی می‌تونی فعالش کنی.</div>
-        <div class="step"><strong>هر دو نقش</strong> می‌تونی همزمان صفحه داشته باشی و از بقیه هم حمایت کنی. هیچ محدودیتی نیست.</div>
+        <div class="step"><span class="step-num" aria-hidden="true">۱</span><div><strong>حمایت بدون ورود</strong> — نیازی به ساخت حساب نیست. مستقیم برو سراغ صفحه فعال یا پروژه مورد علاقه‌ات و حمایت کن.</div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">۲</span><div><strong>حساب کاربری (اختیاری)</strong> — اگر دوست داری فعالان را دنبال کنی و از به‌روزرسانی‌ها باخبر بشی، یک حساب بساز.</div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">۳</span><div><strong>اگر خودت حمایت دریافت می‌کنی</strong> — صفحه خودت را بساز. هر وقت آماده بودی می‌تونی فعالش کنی.</div></div>
+        <div class="step"><span class="step-num" aria-hidden="true">۴</span><div><strong>هر دو نقش</strong> — می‌تونی همزمان صفحه داشته باشی و از بقیه هم حمایت کنی.</div></div>
       </div>
     </aside>
   </div>
@@ -141,7 +143,9 @@ layout_header(
         <li>پروژه‌ها یا فعالیت‌های غیرمرتبط یا غیرازاد تأیید نمی‌شوند.</li>
         <li>هیچ کارمزدی از مبلغ حمایت کسر نمی‌شود.</li>
       </ul>
-      <a href="/about.php">خط‌مشی کامل ←</a>
+      <a class="link-with-icon" href="/about.php">خط‌مشی کامل
+        <svg class="icon-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+      </a>
     </div>
   </div>
 </section>

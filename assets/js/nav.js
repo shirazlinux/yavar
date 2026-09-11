@@ -56,3 +56,26 @@
   if (mq.addEventListener) mq.addEventListener("change", onMq);
   else if (mq.addListener) mq.addListener(onMq);
 })();
+
+/**
+ * داشبورد: روی دسکتاپ منو همیشه باز؛ روی موبایل پیش‌فرض جمع
+ */
+(function () {
+  var details = document.querySelector(".dash-nav__details");
+  if (!details) return;
+  var mq = window.matchMedia("(min-width: 901px)");
+  function sync(initial) {
+    if (mq.matches) {
+      details.open = true;
+      details.dataset.desktop = "1";
+    } else {
+      if (initial || details.dataset.desktop === "1") {
+        details.open = false;
+      }
+      delete details.dataset.desktop;
+    }
+  }
+  sync(true);
+  if (mq.addEventListener) mq.addEventListener("change", function () { sync(false); });
+  else if (mq.addListener) mq.addListener(function () { sync(false); });
+})();

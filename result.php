@@ -14,7 +14,7 @@ $title = $ok ? 'پرداخت موفق' : 'پرداخت ناموفق';
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= $title ?> — <?= htmlspecialchars($cfg['site_name'], ENT_QUOTES, 'UTF-8') ?></title>
-  <link rel="stylesheet" href="/assets/css/style.css?v=6">
+  <link rel="stylesheet" href="/assets/css/style.css?v=50">
   <meta name="robots" content="noindex">
 </head>
 <body>

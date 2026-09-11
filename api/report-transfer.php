@@ -75,15 +75,44 @@ db()->prepare('UPDATE donations SET message=? WHERE id=? AND status=?')->execute
 
 $ref = (string) ($d['ref_id'] ?: '-');
 $amt = number_format((int) $d['amount']);
-if (!empty($d['phone'])) {
-    $sms = "حامی اعلام کرد واریز انجام شده\nمبلغ: {$amt} تومان\nکد: {$ref}"
-        . ($track !== '' ? "\nپیگیری بانک: {$track}" : '')
-        . "\nدر پنل تأیید کنید.";
-    try {
-        Sms::send((string) $d['phone'], $sms);
-    } catch (Throwable $e) {
-        error_log('report-transfer sms: ' . $e->getMessage());
+// اعلام واریز توسط حامی — ایمیل/SMS به فعال با توجه به تنظیم کاربر
+try {
+    $act = Notify::loadUser((int) ($d['user_id'] ?? 0)) ?: [];
+    $actName = (string) ($act['display_name'] ?? ($d['display_name'] ?? 'فعال'));
+    $actEmail = (string) ($act['email'] ?? ($d['email'] ?? ''));
+    $actPhone = (string) ($act['phone'] ?? ($d['phone'] ?? ''));
+    $donor = (string) ($d['donor_name'] ?? '');
+    $site = rtrim((string) (app_config()['site_url'] ?? 'https://donate.sudoshz.ir'), '/');
+
+    // ایمیل (اگر کاربر اعلان ایمیل را خاموش نکرده)
+    Notify::donationPending(
+        null,
+        $actEmail,
+        $actName,
+        (int) $d['amount'],
+        (string) ($d['ref_id'] ?? $ref),
+        $donor,
+        $act ?: null
+    );
+
+    // SMS جدا برای اعلام واریز (اگر کاربر اعلان SMS را خاموش نکرده)
+    if ($actPhone !== '' && Notify::wantsSms($act ?: null)) {
+        $sms = "سلام {$actName}\nحامی اعلام کرد واریز انجام شده\nمبلغ: {$amt} تومان\nکد: {$ref}";
+        if ($track !== '') {
+            $sms .= "\nپیگیری: {$track}";
+        }
+        if ($donor !== '') {
+            $sms .= "\nاز: {$donor}";
+        }
+        $sms .= "\n{$site}/dashboard/";
+        try {
+            Sms::send($actPhone, $sms);
+        } catch (Throwable $e) {
+            error_log('report-transfer sms: ' . $e->getMessage());
+        }
     }
+} catch (Throwable $e) {
+    error_log('report-transfer notify: ' . $e->getMessage());
 }
 try {
     Notify::admin(

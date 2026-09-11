@@ -47,20 +47,15 @@
     if (!amount) return;
     amount.setAttribute("dir", "ltr");
     amount.classList.add("money-input");
-    // use text-like formatting on input
-    amount.addEventListener("input", function () {
-      // keep numeric value for form submit via data-raw
-      var raw = onlyDigits(amount.value);
-      amount.dataset.raw = raw;
-      if (amount.type === "number") {
-        // leave number type as-is but display is limited — switch to text if needed
-      }
-    });
+    if (amount.type === "number") {
+      try { amount.type = "text"; } catch (e) {}
+    }
+    amount.setAttribute("inputmode", "numeric");
   }
   document.addEventListener("DOMContentLoaded", function () {
+    formatAmountField();
     wireMoneyInputs();
     formatAmountButtons();
-    formatAmountField();
   });
   window.DonateMoney = { formatGrouped: formatGrouped, onlyDigits: onlyDigits };
 })();

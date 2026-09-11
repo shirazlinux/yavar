@@ -125,10 +125,10 @@ $list = $st->fetchAll();
 layout_header('کمپین‌های حمایت');
 ?>
 <section class="page-section">
-  <div class="container">
+  <div class="container dash-page">
     <h1 class="page-title">کمپین‌های حمایت</h1>
+    <?php dashboard_nav($user, 'campaigns'); ?>
     <p class="page-lead">هدف مالی، مهلت، و مبالغ ثابت تعریف کنید. اگر تا مهلت به هدف نرسید، مسیر بازگشت وجه فعال می‌شود.</p>
-    <p><a href="/dashboard/">← پنل</a></p>
 
     <?php if ($ok): ?><div class="form-msg show ok">انجام شد.</div><?php endif; ?>
     <?php if ($errors): ?><div class="form-msg show error"><?php foreach ($errors as $e): ?><div><?= e($e) ?></div><?php endforeach; ?></div><?php endif; ?>
